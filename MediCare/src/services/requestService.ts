@@ -212,28 +212,39 @@ export const requestService = {
   async getCandidatesForRequest(requestId: string): Promise<MatchCandidate[]> {
     const numericId = requestId.replace("req-", "");
     const token = getToken();
+    let backendCandidates: MatchCandidate[] = [];
+
     if (token && !isNaN(Number(numericId))) {
       try {
-        const matches = await apiClient.get<any[]>(`/api/matches/request/${numericId}`);
+        const matches = await apiClient.get<any[]>(`/api/matches/${numericId}`);
         if (Array.isArray(matches) && matches.length > 0) {
-          return matches.map((m) => ({
+          backendCandidates = matches.map((m) => ({
             id: `cand-${m.id}`,
             kind: "donor",
-            name: m.donor?.name || `Donor #${m.donor_id}`,
-            bloodGroup: (m.donor?.blood_group || "O-") as any,
-            distanceKm: m.distance_km || 2.5,
+            name: m.donor_name || m.donor?.name || `Volunteer Donor #${m.donor_id}`,
+            bloodGroup: (m.blood_group || m.donor?.blood_group || "O-") as any,
+            distanceKm: m.distance_km != null ? Number(m.distance_km) : 2.5,
             etaMin: m.eta_minutes || 15,
-            eligible: true,
+            eligible: m.is_available !== false,
             unitsAvailable: 1,
-            rating: 4.9,
-            verified: true,
+            rating: m.match_score ? Math.min(5.0, Math.max(4.0, Number((m.match_score / 20).toFixed(1)))) : 4.9,
+            verified: m.is_verified ?? true,
             responseRate: 0.95,
           }));
         }
-      } catch {
-        /* fallback */
+      } catch (err) {
+        console.warn("Could not fetch matches from backend, falling back:", err);
       }
     }
-    return await mockDb.getCandidates(requestId);
+
+    const mockCandidates = await mockDb.getCandidates(requestId);
+
+    if (backendCandidates.length > 0) {
+      // Merge with partner blood banks so hospital/blood bank options remain accessible alongside matched donors
+      const banks = mockCandidates.filter((c) => c.kind === "bank");
+      return [...backendCandidates, ...banks];
+    }
+
+    return mockCandidates;
   },
 };

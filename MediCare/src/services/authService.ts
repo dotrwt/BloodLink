@@ -135,6 +135,23 @@ async function handleAuthSuccess(
   setStoredUser(profile);
   mockDb.updateUser(profile);
 
+  if (role === "donor") {
+    mockDb.addCandidate({
+      id: `cand-${profile.id}`,
+      kind: "donor",
+      name: profile.name,
+      bloodGroup: profile.bloodGroup,
+      distanceKm: 1.5,
+      etaMin: 12,
+      eligible: profile.availableToDonate ?? true,
+      unitsAvailable: 1,
+      rating: 5.0,
+      lastDonation: profile.lastDonationDate || "Recent",
+      verified: true,
+      responseRate: 1.0,
+    });
+  }
+
   return { data, targetPath, profile };
 }
 

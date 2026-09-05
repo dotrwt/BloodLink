@@ -347,13 +347,44 @@ export const mockDb = {
     }
   },
 
-  // Candidates
-  async getCandidates(requestId?: string): Promise<MatchCandidate[]> {
-    await delay();
-    if (requestId) {
-      return [...candidatesDb];
+  addCandidate(cand: MatchCandidate) {
+    const idx = candidatesDb.findIndex(
+      (c) => c.id === cand.id || c.name.toLowerCase() === cand.name.toLowerCase()
+    );
+    if (idx !== -1) {
+      candidatesDb[idx] = { ...candidatesDb[idx], ...cand };
+    } else {
+      candidatesDb.unshift(cand);
     }
-    return [...candidatesDb];
+  },
+
+  // Candidates
+  async getCandidates(_requestId?: string): Promise<MatchCandidate[]> {
+    await delay();
+    const list = [...candidatesDb];
+    // If the active authenticated user is a donor, ensure they are dynamically in the candidate list
+    if (currentUser && currentUser.role === "donor") {
+      const exists = list.some(
+        (c) => c.name.toLowerCase() === currentUser.name.toLowerCase()
+      );
+      if (!exists) {
+        list.unshift({
+          id: `cand-${currentUser.id || "current-donor"}`,
+          kind: "donor",
+          name: currentUser.name,
+          bloodGroup: currentUser.bloodGroup,
+          distanceKm: 1.5,
+          etaMin: 12,
+          eligible: currentUser.availableToDonate ?? true,
+          unitsAvailable: 1,
+          rating: 5.0,
+          lastDonation: currentUser.lastDonationDate || "First-time Donor",
+          verified: true,
+          responseRate: 1.0,
+        });
+      }
+    }
+    return list;
   },
 
   // Nearby Emergencies
