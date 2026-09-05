@@ -27,7 +27,16 @@ export interface UserProfile {
   area?: string;
   gender?: string;
   dateOfBirth?: string;
+  consentToShare?: boolean;
+  relationshipToPatient?: string;
   licenseNumber?: string;
+  bankType?: string;
+  address?: string;
+  pincode?: string;
+  authorizedPersonName?: string;
+  authorizedPersonDesignation?: string;
+  authorizedPersonContact?: string;
+  authorizedPersonEmail?: string;
   org?: string;
   availableToDonate: boolean;
   totalDonations?: number;
@@ -60,6 +69,8 @@ export interface BloodRequest {
   location: string;
   city?: string;
   area?: string;
+  latitude?: number;
+  longitude?: number;
   emergencyContact?: string;
   medicalNotes?: string;
   urgency: Urgency;
@@ -87,6 +98,8 @@ export interface CreateRequestPayload {
   location: string;
   city?: string;
   area?: string;
+  latitude?: number;
+  longitude?: number;
   emergencyContact?: string;
   medicalNotes?: string;
   urgency: Urgency;
@@ -345,4 +358,134 @@ export interface DbNotification {
   notification_type: DbNotificationType;
   is_read: boolean;
   created_at: string;
+}
+
+// ============================================================================
+// Database <-> Frontend UI Data Mappers
+// ============================================================================
+
+export function dbUrgencyToUi(urgency: DbUrgency): Urgency {
+  switch (urgency) {
+    case "CRITICAL":
+      return "critical";
+    case "URGENT":
+      return "urgent";
+    case "NORMAL":
+    default:
+      return "routine";
+  }
+}
+
+export function uiUrgencyToDb(urgency: Urgency): DbUrgency {
+  switch (urgency) {
+    case "critical":
+      return "CRITICAL";
+    case "urgent":
+      return "URGENT";
+    case "routine":
+    default:
+      return "NORMAL";
+  }
+}
+
+export function dbRequestStatusToUi(status: DbRequestStatus): RequestStatus {
+  switch (status) {
+    case "OPEN":
+    case "MATCHING":
+      return "matching";
+    case "PARTIALLY_FULFILLED":
+      return "en_route";
+    case "FULFILLED":
+      return "fulfilled";
+    case "CANCELLED":
+      return "cancelled";
+    default:
+      return "matching";
+  }
+}
+
+export function uiRequestStatusToDb(status: RequestStatus): DbRequestStatus {
+  switch (status) {
+    case "matching":
+    case "contacted":
+      return "MATCHING";
+    case "accepted":
+    case "en_route":
+    case "confirmed":
+      return "PARTIALLY_FULFILLED";
+    case "fulfilled":
+      return "FULFILLED";
+    case "cancelled":
+      return "CANCELLED";
+    default:
+      return "OPEN";
+  }
+}
+
+export function dbRoleToUi(role: DbUserRole): Role {
+  switch (role) {
+    case "DONOR":
+      return "donor";
+    case "REQUESTER":
+      return "requester";
+    case "BLOOD_BANK":
+      return "bank";
+  }
+}
+
+export function uiRoleToDb(role: Role): DbUserRole {
+  switch (role) {
+    case "donor":
+      return "DONOR";
+    case "requester":
+      return "REQUESTER";
+    case "bank":
+      return "BLOOD_BANK";
+  }
+}
+
+export function dbRequestToUi(db: DbBloodRequest): BloodRequest {
+  return {
+    id: `req-${db.request_id}`,
+    patientName: db.patient_name,
+    bloodGroup: db.blood_group,
+    units: db.units_required,
+    unitsSecured: 0,
+    hospital: db.hospital_name,
+    location: `${db.area ? db.area + ", " : ""}${db.city}`,
+    city: db.city,
+    area: db.area,
+    latitude: db.latitude,
+    longitude: db.longitude,
+    emergencyContact: db.emergency_contact,
+    medicalNotes: db.medical_notes,
+    urgency: dbUrgencyToUi(db.urgency),
+    requiredBy: db.required_by,
+    createdAt: db.created_at,
+    status: dbRequestStatusToUi(db.status),
+    note: db.medical_notes,
+  };
+}
+
+export function dbInventoryToUi(db: DbBloodInventory, capacity = 30): InventoryRow {
+  return {
+    group: db.blood_group,
+    units: db.total_units,
+    reserved: db.reserved_units,
+    nearExpiry: 0,
+    capacity,
+    safeThreshold: db.safe_threshold,
+  };
+}
+
+export function dbNotificationToUi(db: DbNotification): AppNotification {
+  return {
+    id: `notif-${db.notification_id}`,
+    role: "all",
+    kind: db.notification_type === "URGENT_ALERT" || db.notification_type === "BLOOD_REQUEST" ? "emergency" : "system",
+    title: db.title,
+    body: db.message,
+    time: db.created_at,
+    unread: !db.is_read,
+  };
 }
