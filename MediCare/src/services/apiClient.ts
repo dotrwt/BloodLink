@@ -115,10 +115,18 @@ export const apiClient = {
     });
   },
 
+  patch<T>(path: string, body?: any): Promise<T> {
+    return request<T>(path, {
+      method: "PATCH",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  },
+
   delete<T>(path: string): Promise<T> {
     return request<T>(path, { method: "DELETE" });
   },
 };
+
 
 export async function handleResponse<T>(promise: Promise<T>): Promise<T> {
   try {

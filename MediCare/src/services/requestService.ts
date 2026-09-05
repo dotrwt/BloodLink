@@ -25,6 +25,27 @@ function mapBackendStatus(s: string): RequestStatus {
   }
 }
 
+function mapUiStatusToBackend(s: RequestStatus): string {
+  switch (s) {
+    case "matching":
+      return "MATCHING";
+    case "contacted":
+      return "DONOR_NOTIFIED";
+    case "accepted":
+      return "DONOR_ACCEPTED";
+    case "en_route":
+      return "EN_ROUTE";
+    case "confirmed":
+      return "BLOOD_RECEIVED";
+    case "fulfilled":
+      return "COMPLETED";
+    case "cancelled":
+      return "CANCELLED";
+    default:
+      return "MATCHING";
+  }
+}
+
 export const requestService = {
   async getRequests(): Promise<BloodRequest[]> {
     const token = getToken();
@@ -34,12 +55,12 @@ export const requestService = {
         if (Array.isArray(backendRequests) && backendRequests.length > 0) {
           const mapped: BloodRequest[] = backendRequests.map((r) => ({
             id: `req-${r.id}`,
-            patientName: r.patient_reference || `Patient #${r.id}`,
+            patientName: r.patient_reference || r.patient_name || `Patient #${r.id}`,
             bloodGroup: (r.blood_group || "O+") as any,
             units: r.units_required || 1,
             unitsSecured: r.units_fulfilled || 0,
             hospital: r.hospital_name || "Emergency Medical Hospital",
-            location: "Gwalior Center",
+            location: `${r.area ? r.area + ", " : ""}${r.city || "Bengaluru"}`,
             urgency: ((r.urgency || "urgent").toLowerCase()) as any,
             requiredBy: r.required_by
               ? new Date(r.required_by).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -68,12 +89,12 @@ export const requestService = {
         if (r && r.id) {
           return {
             id: `req-${r.id}`,
-            patientName: r.patient_reference || `Patient #${r.id}`,
+            patientName: r.patient_reference || r.patient_name || `Patient #${r.id}`,
             bloodGroup: (r.blood_group || "O+") as any,
             units: r.units_required || 1,
             unitsSecured: r.units_fulfilled || 0,
             hospital: r.hospital_name || "Emergency Medical Hospital",
-            location: "Gwalior Center",
+            location: `${r.area ? r.area + ", " : ""}${r.city || "Bengaluru"}`,
             urgency: ((r.urgency || "urgent").toLowerCase()) as any,
             requiredBy: r.required_by
               ? new Date(r.required_by).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -128,6 +149,18 @@ export const requestService = {
   },
 
   async updateStatus(id: string, status: RequestStatus): Promise<BloodRequest | null> {
+    const numericId = id.replace("req-", "");
+    const token = getToken();
+    if (token && !isNaN(Number(numericId))) {
+      try {
+        const backendStatus = mapUiStatusToBackend(status);
+        await apiClient.patch(`/api/requests/${numericId}/status`, {
+          status: backendStatus,
+        });
+      } catch {
+        /* fallback to mock */
+      }
+    }
     return await mockDb.updateRequestStatus(id, status);
   },
 
