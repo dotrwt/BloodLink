@@ -135,4 +135,36 @@ h5 {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-bl-fade-up { animation: bl-fade-up 0.4s ease both; }
+.animate-bl-fade-up { animation: bl-fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes bl-slide-in-bottom {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-bl-slide-up { animation: bl-slide-in-bottom 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes bl-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-bl-scale-in { animation: bl-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Safe area insets for mobile devices */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+.pt-safe {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0.5rem));
+}
+
+/* Tactile button interaction */
+.btn-tactile:active {
+  transform: scale(0.975);
+}
+
+/* Touch-friendly target size helper */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+

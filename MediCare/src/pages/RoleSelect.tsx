@@ -344,14 +344,29 @@ export default function RoleSelect() {
                     />
                   </Field>
 
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-2.5">
                     <Button type="submit" size="lg" fullWidth loading={loading}>
                       {loading ? "Creating account…" : `Create ${activeRoleData.title} account`}
                     </Button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate(
+                          selectedRole === "donor"
+                            ? "/app/donor"
+                            : selectedRole === "bank"
+                            ? "/app/bank"
+                            : "/app/requester"
+                        );
+                      }}
+                      className="w-full text-center text-xs font-semibold text-primary hover:underline py-1 cursor-pointer"
+                    >
+                      Instant Demo Mode: Enter {activeRoleData.title} Workspace →
+                    </button>
                   </div>
                 </form>
 
-                <p className="mt-6 text-xs text-muted-foreground text-center">
+                <p className="mt-5 text-xs text-muted-foreground text-center">
                   Already registered?{" "}
                   <Link to="/login" className="text-primary font-semibold hover:underline">
                     Log in

@@ -46,8 +46,8 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center font-medium transition-colors select-none",
-        "disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex items-center justify-center font-medium transition-all duration-150 select-none cursor-pointer active:scale-[0.98]",
+        "disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100",
         variants[variant],
         sizes[size],
         fullWidth && "w-full",
