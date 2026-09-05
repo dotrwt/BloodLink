@@ -60,7 +60,11 @@ export const requestService = {
             units: r.units_required || 1,
             unitsSecured: r.units_fulfilled || 0,
             hospital: r.hospital_name || "Emergency Medical Hospital",
-            location: `${r.area ? r.area + ", " : ""}${r.city || "Bengaluru"}`,
+            location: `${r.area ? r.area + ", " : ""}${r.city || ""}`.trim() || "Hospital Medical Ward",
+            city: r.city || undefined,
+            area: r.area || undefined,
+            latitude: r.latitude || undefined,
+            longitude: r.longitude || undefined,
             urgency: ((r.urgency || "urgent").toLowerCase()) as any,
             requiredBy: r.required_by
               ? new Date(r.required_by).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -94,7 +98,11 @@ export const requestService = {
             units: r.units_required || 1,
             unitsSecured: r.units_fulfilled || 0,
             hospital: r.hospital_name || "Emergency Medical Hospital",
-            location: `${r.area ? r.area + ", " : ""}${r.city || "Bengaluru"}`,
+            location: `${r.area ? r.area + ", " : ""}${r.city || ""}`.trim() || "Hospital Medical Ward",
+            city: r.city || undefined,
+            area: r.area || undefined,
+            latitude: r.latitude || undefined,
+            longitude: r.longitude || undefined,
             urgency: ((r.urgency || "urgent").toLowerCase()) as any,
             requiredBy: r.required_by
               ? new Date(r.required_by).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -122,6 +130,10 @@ export const requestService = {
           urgency: (payload.urgency || "URGENT").toUpperCase(),
           patient_reference: payload.patientName,
           notes: payload.note,
+          city: payload.city,
+          area: payload.area,
+          latitude: payload.latitude,
+          longitude: payload.longitude,
         });
 
         if (res && res.id) {
@@ -133,12 +145,17 @@ export const requestService = {
             unitsSecured: 0,
             hospital: payload.hospital,
             location: payload.location,
+            city: res.city || payload.city,
+            area: res.area || payload.area,
+            latitude: res.latitude || payload.latitude,
+            longitude: res.longitude || payload.longitude,
             urgency: payload.urgency,
             requiredBy: payload.requiredBy,
             createdAt: "Just now",
             status: "matching",
             note: payload.note,
           };
+          mockDb.upsertRequest(newReq);
           return newReq;
         }
       } catch {
@@ -165,7 +182,11 @@ export const requestService = {
             units: res.units_required || 1,
             unitsSecured: res.units_fulfilled || 0,
             hospital: res.hospital_name || "Emergency Medical Hospital",
-            location: `${res.area ? res.area + ", " : ""}${res.city || "Bengaluru"}`,
+            location: `${res.area ? res.area + ", " : ""}${res.city || ""}`.trim() || "Hospital Medical Ward",
+            city: res.city || undefined,
+            area: res.area || undefined,
+            latitude: res.latitude || undefined,
+            longitude: res.longitude || undefined,
             urgency: ((res.urgency || "urgent").toLowerCase()) as any,
             requiredBy: res.required_by
               ? new Date(res.required_by).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })

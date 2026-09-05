@@ -222,11 +222,14 @@ let notificationsDb: AppNotification[] = [
 ];
 
 const hospitalsDb: Hospital[] = [
-  { id: "h1", name: "Manipal Hospital, Old Airport Rd", city: "Bengaluru", address: "98 HAL Old Airport Rd" },
-  { id: "h2", name: "Narayana Health City", city: "Bengaluru", address: "Bommasandra Industrial Area" },
-  { id: "h3", name: "Fortis Hospital, Bannerghatta", city: "Bengaluru", address: "Bannerghatta Main Rd" },
-  { id: "h4", name: "Columbia Asia Referral Hospital", city: "Bengaluru", address: "Yeshwanthpur" },
-  { id: "h5", name: "St. John's Medical College Hospital", city: "Bengaluru", address: "Sarjapur Rd" },
+  { id: "h1", name: "Manipal Hospital, Old Airport Rd", city: "Bengaluru", address: "98 HAL Old Airport Rd, Bengaluru" },
+  { id: "h2", name: "Apollo Demo Hospital", city: "Gwalior", address: "City Centre, Gwalior" },
+  { id: "h3", name: "Jaya Arogya (JAH) Hospital", city: "Gwalior", address: "Lashkar, Gwalior" },
+  { id: "h4", name: "Narayana Health City", city: "Bengaluru", address: "Bommasandra Industrial Area, Bengaluru" },
+  { id: "h5", name: "Fortis Hospital, Bannerghatta", city: "Bengaluru", address: "Bannerghatta Main Rd, Bengaluru" },
+  { id: "h6", name: "Red Cross Blood Bank", city: "Delhi", address: "1 Red Cross Rd, New Delhi" },
+  { id: "h7", name: "AIIMS New Delhi", city: "Delhi", address: "Ansari Nagar, New Delhi" },
+  { id: "h8", name: "KEM Hospital", city: "Mumbai", address: "Parel, Mumbai" },
 ];
 
 const donorDonationsDb: DonorDonationRecord[] = [
@@ -296,6 +299,10 @@ export const mockDb = {
       unitsSecured: 0,
       hospital: payload.hospital,
       location: payload.location,
+      city: payload.city,
+      area: payload.area,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
       urgency: payload.urgency,
       requiredBy: payload.requiredBy,
       createdAt: "Just now",

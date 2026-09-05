@@ -1,42 +1,53 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import {
   Activity,
+  MapPin,
   Navigation,
   Phone,
   Play,
   RotateCcw,
   ShieldCheck,
 } from "../../lib/icons";
+import {
+  type LatLng,
+  resolveLocationCoordinates,
+  resolveNearbyDonorCoordinates,
+  generateDrivingRoute,
+  calculateDistanceKm,
+  calculateEtaMinutes,
+} from "../../lib/geoUtils";
 
-interface LiveDonorMapProps {
+export interface LiveDonorMapProps {
   donorName?: string;
   donorBloodGroup?: string;
   donorPhone?: string;
+  donorCity?: string;
+  donorArea?: string;
+  donorCoords?: LatLng;
   hospitalName?: string;
   hospitalAddress?: string;
+  requesterCity?: string;
+  requesterArea?: string;
+  destinationCoords?: LatLng;
   status?: string;
   className?: string;
 }
-
-// Route waypoints simulating route in Bengaluru from Indiranagar to Manipal Hospital
-const DEFAULT_ROUTE: [number, number][] = [
-  [12.9784, 77.6408], // Donor Start (100 Feet Rd, Indiranagar)
-  [12.9745, 77.6415], // CMH Road Junction
-  [12.9698, 77.6432], // Domlur Flyover entry
-  [12.9652, 77.6475], // Airport Road transition
-  [12.9615, 77.6512], // HAL Old Airport Rd
-  [12.9592, 77.6534], // Destination (Manipal Hospital Emergency)
-];
 
 export function LiveDonorMap({
   donorName = "Rahul Sharma",
   donorBloodGroup = "O-",
   donorPhone = "+91 98765 43210",
-  hospitalName = "Manipal Hospital, Old Airport Rd",
-  hospitalAddress = "HAL 2nd Stage, Bengaluru",
+  donorCity,
+  donorArea,
+  donorCoords,
+  hospitalName = "Emergency Medical Hospital",
+  hospitalAddress,
+  requesterCity,
+  requesterArea,
+  destinationCoords,
   status = "accepted",
   className = "",
 }: LiveDonorMapProps) {
@@ -45,38 +56,76 @@ export function LiveDonorMap({
   const donorMarkerRef = useRef<L.Marker | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
 
+  // 1. Dynamically resolve destination based on requester/hospital filled details
+  const destination = useMemo(() => {
+    return resolveLocationCoordinates(
+      hospitalAddress || hospitalName,
+      requesterCity,
+      requesterArea,
+      destinationCoords
+    );
+  }, [hospitalAddress, hospitalName, requesterCity, requesterArea, destinationCoords]);
+
+  // 2. Dynamically resolve donor origin based on donor's filled details
+  const donorOrigin = useMemo(() => {
+    if (donorCoords && donorCoords[0] && donorCoords[1]) {
+      return {
+        coords: donorCoords,
+        city: donorCity || destination.city,
+        area: donorArea || "Donor Station",
+        displayName: `${donorArea || "Donor Station"}, ${donorCity || destination.city}`,
+      };
+    }
+    return resolveNearbyDonorCoordinates(destination.coords, donorArea, donorCity);
+  }, [destination, donorArea, donorCity, donorCoords]);
+
+  // 3. Synthesize realistic 7-point driving route between donor origin & hospital destination
+  const activeRoute = useMemo(() => {
+    return generateDrivingRoute(donorOrigin.coords, destination.coords, 7);
+  }, [donorOrigin.coords, destination.coords]);
+
+  // 4. Calculate real driving distance & dynamic ETA
+  const totalDistKm = useMemo(() => {
+    return calculateDistanceKm(donorOrigin.coords, destination.coords);
+  }, [donorOrigin.coords, destination.coords]);
+
   // Simulation progress index (0 to 1)
-  const [progress, setProgress] = useState(0.25);
+  const [progress, setProgress] = useState(0.22);
   const [isLiveSimulating, setIsLiveSimulating] = useState(true);
-  const [currentSpeed, setCurrentSpeed] = useState(32);
+  const [currentSpeed, setCurrentSpeed] = useState(34);
 
   // Compute interpolated position along the route
-  const totalSegments = DEFAULT_ROUTE.length - 1;
+  const totalSegments = activeRoute.length - 1;
   const currentSegmentIndex = Math.min(
     Math.floor(progress * totalSegments),
     totalSegments - 1
   );
   const segmentFraction = progress * totalSegments - currentSegmentIndex;
 
-  const p1 = DEFAULT_ROUTE[currentSegmentIndex];
-  const p2 = DEFAULT_ROUTE[currentSegmentIndex + 1];
+  const p1 = activeRoute[currentSegmentIndex];
+  const p2 = activeRoute[currentSegmentIndex + 1];
 
   const currentLat = p1[0] + (p2[0] - p1[0]) * segmentFraction;
   const currentLng = p1[1] + (p2[1] - p1[1]) * segmentFraction;
 
-  // Calculate remaining distance in km
-  const totalDistKm = 2.8;
-  const remainingDist = Math.max(0.1, totalDistKm * (1 - progress));
-  const estimatedMins = Math.max(1, Math.round(remainingDist * 3.8));
+  const remainingDist = Math.max(0.1, Number((totalDistKm * (1 - progress)).toFixed(1)));
+  const estimatedMins = Math.max(1, calculateEtaMinutes(remainingDist, currentSpeed));
 
-  // Initialize Leaflet Map
+  // Initialize and update Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) return;
 
-    // Create Map instance
+    // Clean up previous instance if coordinates changed significantly
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+
+    const midLat = (donorOrigin.coords[0] + destination.coords[0]) / 2;
+    const midLng = (donorOrigin.coords[1] + destination.coords[1]) / 2;
+
     const map = L.map(mapContainerRef.current, {
-      center: [12.9688, 77.6471],
+      center: [midLat, midLng],
       zoom: 14,
       zoomControl: false,
       attributionControl: false,
@@ -91,11 +140,11 @@ export function LiveDonorMap({
     // Subtle zoom control at bottom right
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    // Full glowing route path
-    const routeLine = L.polyline(DEFAULT_ROUTE, {
+    // Glowing route polyline
+    const routeLine = L.polyline(activeRoute, {
       color: "#0d6b63",
       weight: 6,
-      opacity: 0.75,
+      opacity: 0.78,
       dashArray: "10, 8",
       lineCap: "round",
     }).addTo(map);
@@ -103,7 +152,6 @@ export function LiveDonorMap({
     routePolylineRef.current = routeLine;
 
     // Destination Hospital Marker
-    const hospitalCoords = DEFAULT_ROUTE[DEFAULT_ROUTE.length - 1];
     const hospitalIcon = L.divIcon({
       className: "custom-hospital-marker",
       html: `
@@ -136,7 +184,7 @@ export function LiveDonorMap({
             border-radius: 9999px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           ">
-            Emergency Destination
+            ${hospitalName.split(",")[0]}
           </div>
         </div>
       `,
@@ -144,10 +192,10 @@ export function LiveDonorMap({
       iconAnchor: [19, 19],
     });
 
-    L.marker(hospitalCoords, { icon: hospitalIcon })
+    L.marker(destination.coords, { icon: hospitalIcon })
       .addTo(map)
       .bindPopup(
-        `<strong>${hospitalName}</strong><br/><span style="font-size:12px;color:#64748b;">${hospitalAddress}</span>`
+        `<strong>${hospitalName}</strong><br/><span style="font-size:12px;color:#64748b;">${destination.displayName}</span>`
       );
 
     // Donor Moving Marker
@@ -202,25 +250,33 @@ export function LiveDonorMap({
       iconAnchor: [22, 22],
     });
 
-    const donorMarker = L.marker([DEFAULT_ROUTE[0][0], DEFAULT_ROUTE[0][1]], {
+    const donorMarker = L.marker([currentLat, currentLng], {
       icon: donorIcon,
     }).addTo(map);
 
     donorMarker.bindPopup(
-      `<strong>${donorName}</strong> (${donorBloodGroup})<br/><span style="color:#0d6b63;font-size:12px;font-weight:600;">En route to emergency patient</span>`
+      `<strong>${donorName}</strong> (${donorBloodGroup})<br/><span style="color:#0d6b63;font-size:12px;font-weight:600;">Dispatched from ${donorOrigin.displayName}</span>`
     );
 
     donorMarkerRef.current = donorMarker;
     mapInstanceRef.current = map;
 
-    // Fit route bounds nicely
-    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+    // Fit map bounds to view both donor and destination with comfortable padding
+    map.fitBounds(routeLine.getBounds(), { padding: [50, 50], maxZoom: 15 });
 
     return () => {
       map.remove();
       mapInstanceRef.current = null;
     };
-  }, [donorBloodGroup, donorName, hospitalAddress, hospitalName]);
+  }, [
+    destination.coords[0],
+    destination.coords[1],
+    donorOrigin.coords[0],
+    donorOrigin.coords[1],
+    donorBloodGroup,
+    donorName,
+    hospitalName,
+  ]);
 
   // Handle smooth simulation progression
   useEffect(() => {
@@ -229,13 +285,13 @@ export function LiveDonorMap({
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 0.98) {
-          return 0.98; // Stay near hospital
+          return 0.98; // Stay near destination
         }
         return prev + 0.015;
       });
 
-      // Random speed fluctuations between 28 - 38 km/h
-      setCurrentSpeed(Math.floor(28 + Math.random() * 10));
+      // Random speed fluctuations between 28 - 40 km/h
+      setCurrentSpeed(Math.floor(28 + Math.random() * 12));
     }, 1800);
 
     return () => clearInterval(interval);
@@ -273,7 +329,7 @@ export function LiveDonorMap({
     status === "en_route"
       ? "En Route to Destination"
       : status === "confirmed"
-      ? "Arrived at Hospital"
+      ? "Arrived at Destination"
       : "Accepted by Donor";
 
   return (
@@ -298,7 +354,7 @@ export function LiveDonorMap({
             LIVE DONOR GPS
           </Badge>
           <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium bg-background/90 backdrop-blur px-2.5 py-1 rounded-full border border-border/80 shadow-xs text-muted-foreground">
-            <ShieldCheck size={13} className="text-success" /> Satellite Encrypted
+            <ShieldCheck size={13} className="text-success" /> Live Telemetry
           </span>
         </div>
 
@@ -315,8 +371,9 @@ export function LiveDonorMap({
                   {statusLabel}
                 </span>
               </p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                Destination: {hospitalName.split(",")[0]}
+              <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                <MapPin size={11} className="text-primary shrink-0" />
+                <span>To: {hospitalName.split(",")[0]} ({destination.city})</span>
               </p>
             </div>
           </div>

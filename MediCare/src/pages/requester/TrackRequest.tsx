@@ -6,6 +6,7 @@ import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { StatusStepper, BloodGroupChip } from "../../components/ui/domain";
 import { Link, matchPath, useRouter } from "../../lib/router";
 import { useRequestDetail } from "../../hooks/useRequestDetail";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { LiveDonorMap } from "../../components/domain/LiveDonorMap";
 import type { RequestStatus } from "../../types/models";
 import {
@@ -32,6 +33,7 @@ export default function TrackRequest() {
   const requestId = params?.id;
 
   const { request, loading, error, refetch, updateStatus } = useRequestDetail(requestId);
+  const { user } = useCurrentUser();
 
   const [auto, setAuto] = useState(false);
   const [coordinatorModal, setCoordinatorModal] = useState(false);
@@ -94,6 +96,15 @@ export default function TrackRequest() {
   function reset() {
     updateStatus("matching");
   }
+
+  const effectiveCity = request.city || user?.city || "";
+  const effectiveArea = request.area || user?.area || "";
+  const effectiveAddress =
+    request.location && request.location.length > 3
+      ? request.location
+      : effectiveArea && effectiveCity
+      ? `${effectiveArea}, ${effectiveCity}`
+      : effectiveCity || request.hospital || "Emergency Care Ward";
 
   return (
     <AppShell title="Live dispatch tracking" active="/app/requester">
@@ -173,10 +184,16 @@ export default function TrackRequest() {
                 donorName={source.name}
                 donorBloodGroup={request.bloodGroup}
                 donorPhone="+91 98765 43210"
+                donorCity={effectiveCity}
+                donorArea={effectiveArea || "Central Ward"}
                 hospitalName={request.hospital}
-                hospitalAddress={
-                  request.location ||
-                  `${request.area || "Indiranagar"}, ${request.city || "Bengaluru"}`
+                hospitalAddress={effectiveAddress}
+                requesterCity={effectiveCity}
+                requesterArea={effectiveArea}
+                destinationCoords={
+                  request.latitude && request.longitude
+                    ? [request.latitude, request.longitude]
+                    : undefined
                 }
                 status={status}
               />
@@ -265,7 +282,7 @@ export default function TrackRequest() {
               <Hospital size={16} className="text-primary shrink-0" /> {request.hospital}
             </p>
             <p className="flex items-center gap-2">
-              <MapPin size={15} className="shrink-0" /> {request.location}
+              <MapPin size={15} className="shrink-0 text-primary" /> {effectiveAddress}
             </p>
             <p className="flex items-center gap-2 text-urgent font-medium font-num">
               <Clock size={15} className="shrink-0" /> Required by: {request.requiredBy}
