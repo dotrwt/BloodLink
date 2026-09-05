@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BLOOD_GROUPS, compatibleDonors } from "../../lib/blood";
 import type { BloodGroup } from "../../lib/types";
 import { cn } from "../../lib/cn";
@@ -5,26 +6,51 @@ import { Check, Droplet } from "../../lib/icons";
 import { BloodGroupChip } from "../ui/domain";
 
 /**
- * Visual explanation of who can donate to a given recipient — not just a
- * text sentence. Shows the recipient prominently and highlights the
- * compatible donor groups.
+ * Visual explanation of who can donate to a given recipient.
+ * Allows interactive switching between blood groups for live exploration.
  */
 export function CompatibilityExplainer({
-  recipient,
+  recipient: initialRecipient = "A+",
   compact,
+  allowSelect = true,
 }: {
-  recipient: BloodGroup;
+  recipient?: BloodGroup;
   compact?: boolean;
+  allowSelect?: boolean;
 }) {
+  const [activeRecipient, setActiveRecipient] = useState<BloodGroup>(initialRecipient);
+  const recipient = allowSelect ? activeRecipient : initialRecipient;
   const donors = compatibleDonors(recipient);
 
   return (
     <div>
-      <div className="flex items-center gap-2.5 mb-3">
-        <span className="text-sm font-medium text-muted-foreground">
-          Patient needs
-        </span>
-        <BloodGroupChip group={recipient} size={compact ? "md" : "lg"} />
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">
+            Patient needs:
+          </span>
+          <BloodGroupChip group={recipient} size={compact ? "md" : "lg"} />
+        </div>
+        {allowSelect && (
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[11px] text-muted-foreground font-medium mr-1">Switch:</span>
+            {BLOOD_GROUPS.map((bg) => (
+              <button
+                key={bg}
+                type="button"
+                onClick={() => setActiveRecipient(bg)}
+                className={cn(
+                  "px-2 py-0.5 rounded-md text-xs font-bold font-num transition-all cursor-pointer",
+                  activeRecipient === bg
+                    ? "bg-primary text-primary-foreground shadow-2xs scale-105"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {bg}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <p className="text-sm text-muted-foreground mb-3">
         {donors.length === 1 ? (

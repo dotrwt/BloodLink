@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { AppShell } from "../../components/layout/AppShell";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Badge } from "../../components/ui/Badge";
-import { Avatar, ErrorState, Skeleton } from "../../components/ui/misc";
-import { StatusStepper } from "../../components/ui/domain";
+import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { StatusStepper, BloodGroupChip } from "../../components/ui/domain";
 import { Link, matchPath, useRouter } from "../../lib/router";
 import { useRequestDetail } from "../../hooks/useRequestDetail";
 import type { RequestStatus } from "../../types/models";
@@ -19,7 +18,9 @@ import {
   Play,
   RotateCcw,
   ShieldCheck,
+  Truck,
   User,
+  X,
 } from "../../lib/icons";
 
 const SEQ: RequestStatus[] = ["matching", "contacted", "accepted", "en_route", "confirmed", "fulfilled"];
@@ -32,6 +33,7 @@ export default function TrackRequest() {
   const { request, loading, error, refetch, updateStatus } = useRequestDetail(requestId);
 
   const [auto, setAuto] = useState(false);
+  const [coordinatorModal, setCoordinatorModal] = useState(false);
   const timer = useRef<number | null>(null);
 
   const status = request?.status || "contacted";
@@ -52,7 +54,7 @@ export default function TrackRequest() {
     return (
       <AppShell title="Track request" active="/app/requester">
         <div className="space-y-4">
-          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-48 rounded-2xl" />
           <Skeleton className="h-64 rounded-2xl" />
         </div>
@@ -71,14 +73,14 @@ export default function TrackRequest() {
   const source = request.source || { name: "Sanjeevani Blood Centre", kind: "bank" as const };
   const isBank = source.kind === "bank";
 
-  const statusCopy: Record<RequestStatus, { title: string; body: string }> = {
-    matching: { title: "Finding matches", body: "Searching for compatible sources." },
-    contacted: { title: `${source.name} has been contacted`, body: "Waiting for confirmation." },
-    accepted: { title: `${source.name} accepted`, body: isBank ? "Units are being prepared for dispatch." : "The donor is preparing to head over." },
-    en_route: { title: isBank ? "Units dispatched" : `${source.name} is en route`, body: "Estimated arrival in ~18 minutes." },
-    confirmed: { title: "Blood confirmed at hospital", body: "The unit has been received. You can mark this request fulfilled." },
-    fulfilled: { title: "Fulfilled", body: "This request is complete." },
-    cancelled: { title: "Cancelled", body: "This request has been cancelled." },
+  const statusCopy: Record<RequestStatus, { title: string; body: string; badge: string }> = {
+    matching: { title: "Searching nearby network", body: "Locating matching donors and partner blood banks within 15 km.", badge: "Step 1/5: Matching" },
+    contacted: { title: `${source.name} contacted`, body: "Coordinator is reviewing units and medical eligibility.", badge: "Step 2/5: Contacted" },
+    accepted: { title: `${source.name} accepted request`, body: isBank ? "Units reserved and packed in cold chain container (2-6°C)." : "Donor accepted and is preparing to travel.", badge: "Step 3/5: Accepted" },
+    en_route: { title: isBank ? "Blood units dispatched" : `${source.name} is en route`, body: "Transit in progress. Estimated arrival at hospital: 14-18 minutes.", badge: "Step 4/5: En Route" },
+    confirmed: { title: "Blood delivered & confirmed", body: "Units successfully verified by hospital receiving desk. Ready for cross-match.", badge: "Step 5/5: Delivered" },
+    fulfilled: { title: "Request fulfilled", body: "This emergency request has been successfully closed.", badge: "Completed" },
+    cancelled: { title: "Request cancelled", body: "This request has been cancelled.", badge: "Cancelled" },
   };
 
   function advance() {
@@ -91,62 +93,103 @@ export default function TrackRequest() {
   }
 
   return (
-    <AppShell title="Track request" active="/app/requester">
+    <AppShell title="Live dispatch tracking" active="/app/requester">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <Link to="/app/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+        <Link
+          to="/app/dashboard"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+        >
           <ArrowLeft size={16} /> Back to dashboard
         </Link>
-        <span className="text-xs text-muted-foreground font-num">ID: {request.id}</span>
+        <span className="text-xs text-muted-foreground font-num bg-card border border-border px-2.5 py-1 rounded-lg">
+          Request ID: {request.id}
+        </span>
       </div>
 
-      {/* Main tracking card */}
-      <Card className="mb-6 overflow-hidden">
-        <div className="bg-primary text-primary-foreground p-6">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <Badge tone="neutral" className="bg-white/15 text-primary-foreground border-white/20">
-              Live tracking
-            </Badge>
-            <span className="text-xs text-primary-foreground/80 font-num">Updated just now</span>
+      {/* Main Tracking Hero Card */}
+      <Card className="mb-6 overflow-hidden shadow-sm border-border">
+        {/* Dynamic header banner */}
+        <div className="bg-primary text-primary-foreground p-5 sm:p-7 relative overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-15"
+            style={{ background: "radial-gradient(40% 40% at 85% 20%, rgba(255,255,255,0.4), transparent 70%)" }}
+          />
+
+          <div className="relative flex items-center justify-between flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 text-primary-foreground text-xs font-bold border border-white/20">
+              <span className="size-2 rounded-full bg-critical animate-bl-ping" />
+              Live Emergency Tracking
+            </span>
+            <span className="text-xs text-primary-foreground/80 font-num font-medium">
+              {statusCopy[status].badge}
+            </span>
           </div>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight">
+
+          <h1 className="relative mt-3 text-2xl sm:text-3xl font-extrabold tracking-tight">
             {statusCopy[status].title}
           </h1>
-          <p className="mt-1 text-sm text-primary-foreground/85">
+          <p className="relative mt-1 text-sm text-primary-foreground/90 max-w-xl leading-relaxed">
             {statusCopy[status].body}
           </p>
+
+          {/* Quick units indicator */}
+          <div className="relative mt-4 flex items-center gap-3 pt-4 border-t border-white/15">
+            <BloodGroupChip group={request.bloodGroup} size="sm" tone="critical" />
+            <span className="text-xs font-bold text-primary-foreground">
+              {request.units} units for {request.patientName}
+            </span>
+            <span className="text-xs text-primary-foreground/80 hidden sm:inline">
+              · Destination: {request.hospital}
+            </span>
+          </div>
         </div>
 
-        <CardBody className="p-6">
-          <StatusStepper status={status} />
+        <CardBody className="p-5 sm:p-6">
+          {/* Stepper */}
+          <div className="overflow-x-auto py-2">
+            <StatusStepper status={status} />
+          </div>
 
-          {/* Source information card */}
-          <div className="mt-6 rounded-2xl border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Avatar name={source.name} size="lg" icon={isBank ? <Building size={20} /> : <User size={20} />} />
+          {/* Active Source Card */}
+          <div className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-center gap-3.5">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-primary-soft text-primary shrink-0 shadow-xs">
+                {isBank ? <Building size={22} /> : <User size={22} />}
+              </span>
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
                   {isBank ? "Partner Blood Bank" : "Verified Volunteer Donor"}
                 </p>
-                <p className="font-semibold text-base">{source.name}</p>
-                <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                  <span className="flex items-center gap-1 text-success"><ShieldCheck size={13} /> Verified</span>
-                </p>
+                <h3 className="font-bold text-base text-foreground mt-0.5">{source.name}</h3>
+                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+                  <span className="flex items-center gap-1 text-success font-semibold">
+                    <ShieldCheck size={13} /> Verified Source
+                  </span>
+                  <span>&bull;</span>
+                  <span className="font-num text-foreground">ETA ~14-18 mins</span>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" leftIcon={<Phone size={14} />}>
-                Call coordinator
+            <div className="flex items-center gap-2.5">
+              <Button
+                size="md"
+                variant="outline"
+                leftIcon={<Phone size={15} />}
+                onClick={() => setCoordinatorModal(true)}
+                className="w-full sm:w-auto shadow-xs"
+              >
+                Contact coordinator
               </Button>
             </div>
           </div>
 
-          {/* Interactive demo advancement */}
+          {/* Interactive Simulation & Progression Bar */}
           <div className="mt-6 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span>Simulate status:</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-foreground">Simulate dispatch:</span>
               <Button size="sm" variant="outline" onClick={advance} disabled={status === "fulfilled"}>
-                Next step
+                Next step →
               </Button>
               <Button
                 size="sm"
@@ -154,14 +197,14 @@ export default function TrackRequest() {
                 leftIcon={<Play size={12} />}
                 onClick={() => setAuto((v) => !v)}
               >
-                {auto ? "Auto playing" : "Auto play"}
+                {auto ? "Auto advancing" : "Auto play"}
               </Button>
               <Button size="sm" variant="ghost" leftIcon={<RotateCcw size={12} />} onClick={reset}>
                 Reset
               </Button>
             </div>
 
-            {status === "confirmed" && (
+            {(status === "confirmed" || status === "en_route") && (
               <Button
                 size="sm"
                 variant="primary"
@@ -170,29 +213,114 @@ export default function TrackRequest() {
                   updateStatus("fulfilled");
                   navigate(`/app/requester/fulfilled/${request.id}`);
                 }}
+                className="shadow-xs"
               >
-                Mark as fulfilled
+                Mark fulfilled & generate receipt
               </Button>
             )}
           </div>
         </CardBody>
       </Card>
 
-      {/* Hospital details */}
-      <Card>
-        <CardHeader title="Delivery Destination" />
-        <CardBody className="pt-0 space-y-2 text-sm text-muted-foreground">
-          <p className="flex items-center gap-2 text-foreground font-medium">
-            <Hospital size={15} /> {request.hospital}
-          </p>
-          <p className="flex items-center gap-2">
-            <MapPin size={15} /> {request.location}
-          </p>
-          <p className="flex items-center gap-2">
-            <Clock size={15} /> Required by: {request.requiredBy}
-          </p>
-        </CardBody>
-      </Card>
+      {/* Delivery Destination & Clinical Notes */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="shadow-2xs">
+          <CardHeader title="Hospital Destination" />
+          <CardBody className="pt-0 space-y-2 text-xs sm:text-sm text-muted-foreground">
+            <p className="flex items-center gap-2 text-foreground font-semibold text-sm">
+              <Hospital size={16} className="text-primary shrink-0" /> {request.hospital}
+            </p>
+            <p className="flex items-center gap-2">
+              <MapPin size={15} className="shrink-0" /> {request.location}
+            </p>
+            <p className="flex items-center gap-2 text-urgent font-medium font-num">
+              <Clock size={15} className="shrink-0" /> Required by: {request.requiredBy}
+            </p>
+          </CardBody>
+        </Card>
+
+        <Card className="shadow-2xs">
+          <CardHeader title="Patient Medical Record" />
+          <CardBody className="pt-0 space-y-2 text-xs sm:text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground">
+              Patient: {request.patientName} ({request.bloodGroup})
+            </p>
+            <p className="leading-relaxed">
+              {request.note || request.medicalNotes || "Emergency whole blood request raised via BloodLink network. Cross-match specimen pre-tested."}
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Coordinator Contact Modal */}
+      {coordinatorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/45 backdrop-blur-xs transition-opacity"
+            onClick={() => setCoordinatorModal(false)}
+          />
+
+          <div className="relative w-full max-w-md rounded-3xl bg-card border border-border shadow-2xl p-6 z-10 animate-bl-scale-in">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-primary-soft text-primary">
+                  <Phone size={16} />
+                </span>
+                <h3 className="font-bold text-base text-foreground">Emergency Coordinator Desk</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCoordinatorModal(false)}
+                className="flex size-8 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-3.5 text-xs">
+              <div className="rounded-xl border border-border bg-muted/40 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Lead Coordinator:</span>
+                  <span className="font-bold text-foreground">Rajeev Sen (Logistics Officer)</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Direct Hotline:</span>
+                  <a
+                    href="tel:+919876511111"
+                    className="font-num font-bold text-primary hover:underline"
+                  >
+                    +91 98765 11111
+                  </a>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Hospital Receiving Desk:</span>
+                  <span className="font-num font-semibold text-foreground">Ext. 4022</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Ambulance Carrier:</span>
+                  <span className="font-num font-semibold text-foreground">KA-01-EA-4920</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-success-soft text-success text-xs font-semibold flex items-center gap-2">
+                <Truck size={16} className="shrink-0" />
+                <span>Units packed in 2–6°C certified cold chain storage box. Transit active.</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+              <Button variant="ghost" size="sm" onClick={() => setCoordinatorModal(false)}>
+                Close
+              </Button>
+              <a href="tel:+919876511111" className="inline-block">
+                <Button size="sm" leftIcon={<Phone size={14} />}>
+                  Call Now (+91 98765 11111)
+                </Button>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

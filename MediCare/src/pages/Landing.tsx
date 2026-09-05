@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "../lib/router";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
@@ -11,26 +12,30 @@ import {
   Clock,
   DropletFill,
   MapPin,
+  Menu,
   Phone,
   ShieldCheck,
   User,
   Users,
+  X,
   Zap,
 } from "../lib/icons";
 
 import { useLandingMetrics } from "../hooks/useLandingMetrics";
 
 function PublicNav() {
+  const [open, setOpen] = useState(false);
+
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
-      <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-md">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link to="/"><Logo /></Link>
         <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground">
-          <a href="#how" className="hover:text-foreground">How it works</a>
-          <a href="#roles" className="hover:text-foreground">For</a>
-          <a href="#trust" className="hover:text-foreground">Trust &amp; safety</a>
+          <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
+          <a href="#roles" className="hover:text-foreground transition-colors">Who it's for</a>
+          <a href="#trust" className="hover:text-foreground transition-colors">Trust &amp; safety</a>
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2.5">
           <Link to="/login">
             <Button variant="ghost" size="sm">Log in</Button>
           </Link>
@@ -38,7 +43,54 @@ function PublicNav() {
             <Button size="sm">Get started</Button>
           </Link>
         </div>
+        <div className="flex sm:hidden items-center gap-2">
+          <Link to="/login">
+            <Button variant="ghost" size="sm">Log in</Button>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex size-9 items-center justify-center rounded-xl text-foreground hover:bg-muted touch-target"
+            aria-label="Toggle navigation"
+          >
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile navigation sheet */}
+      {open && (
+        <div className="sm:hidden border-b border-border bg-card p-4 space-y-3 animate-bl-fade-up shadow-lg">
+          <nav className="flex flex-col space-y-2 text-sm font-medium">
+            <a
+              href="#how"
+              onClick={() => setOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-muted text-foreground transition-colors"
+            >
+              How it works
+            </a>
+            <a
+              href="#roles"
+              onClick={() => setOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-muted text-foreground transition-colors"
+            >
+              Who it's for
+            </a>
+            <a
+              href="#trust"
+              onClick={() => setOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-muted text-foreground transition-colors"
+            >
+              Trust &amp; safety
+            </a>
+          </nav>
+          <div className="pt-2 border-t border-border flex flex-col gap-2">
+            <Link to="/select-role" onClick={() => setOpen(false)}>
+              <Button fullWidth size="md">Get started free</Button>
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -166,13 +218,13 @@ export default function Landing() {
                 </div>
               </div>
             )}
-            <div className="absolute -bottom-4 -left-4 rounded-2xl border border-border bg-card shadow-lg px-4 py-3 hidden sm:flex items-center gap-2.5">
-              <span className="flex size-8 items-center justify-center rounded-full bg-success-soft text-success">
+            <div className="absolute -bottom-3 left-3 sm:-bottom-4 sm:-left-4 rounded-2xl border border-border bg-card shadow-lg px-3.5 py-2.5 sm:px-4 sm:py-3 flex items-center gap-2.5 z-10">
+              <span className="flex size-8 items-center justify-center rounded-full bg-success-soft text-success shrink-0">
                 <ShieldCheck size={17} />
               </span>
               <div className="text-xs">
-                <p className="font-semibold">Donor accepted</p>
-                <p className="text-muted-foreground">En route · ETA 14 min</p>
+                <p className="font-semibold text-foreground">Donor accepted</p>
+                <p className="text-muted-foreground font-num">En route · ETA 14 min</p>
               </div>
             </div>
           </div>

@@ -11,20 +11,33 @@ import { Link, useRouter } from "../../lib/router";
 import { useOptions } from "../../hooks/useOptions";
 import { useRequests } from "../../hooks/useRequests";
 import type { BloodGroup, Urgency } from "../../types/models";
-import { ArrowLeft, ArrowRight } from "../../lib/icons";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ShieldCheck,
+} from "../../lib/icons";
+
+const TIME_PRESETS = [
+  { label: "Immediate (< 2 hrs)", value: "Today, within 2 hours" },
+  { label: "Today Evening", value: "Today, 6:00 PM" },
+  { label: "Tomorrow Morning", value: "Tomorrow, 9:00 AM" },
+  { label: "Scheduled Transfusion", value: "Scheduled for next day" },
+];
+
+const UNIT_PRESETS = [1, 2, 3, 4];
 
 export default function CreateRequest() {
   const { navigate } = useRouter();
   const { bloodGroups, urgencyLevels, hospitals, loading: optionsLoading } = useOptions();
   const { createRequest } = useRequests();
 
-  const [group, setGroup] = useState<BloodGroup | "">("");
-  const [units, setUnits] = useState("");
+  const [group, setGroup] = useState<BloodGroup | "">("A+");
+  const [units, setUnits] = useState("2");
   const [patient, setPatient] = useState("");
-  const [hospital, setHospital] = useState("");
-  const [location, setLocation] = useState("");
-  const [urgency, setUrgency] = useState<Urgency>("urgent");
-  const [requiredBy, setRequiredBy] = useState("");
+  const [hospital, setHospital] = useState(hospitals[0]?.name || "Manipal Hospital, Old Airport Rd");
+  const [location, setLocation] = useState(hospitals[0]?.address || "HAL, Bengaluru");
+  const [urgency, setUrgency] = useState<Urgency>("critical");
+  const [requiredBy, setRequiredBy] = useState("Today, within 2 hours");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -32,9 +45,9 @@ export default function CreateRequest() {
   const errors = {
     group: !group ? "Select the required blood group" : "",
     units: !units || Number(units) < 1 ? "Enter at least 1 unit" : "",
-    patient: !patient ? "Patient name is required" : "",
+    patient: !patient.trim() ? "Patient name is required" : "",
     hospital: !hospital ? "Hospital / facility is required" : "",
-    requiredBy: !requiredBy ? "Set a required-by time" : "",
+    requiredBy: !requiredBy.trim() ? "Set a required-by time" : "",
   };
   const valid = Object.values(errors).every((e) => !e);
 
@@ -49,7 +62,7 @@ export default function CreateRequest() {
         bloodGroup: group,
         units: Number(units),
         hospital,
-        location: location || "Central City",
+        location: location || "Central Hospital Ward",
         urgency,
         requiredBy,
         note,
@@ -63,44 +76,53 @@ export default function CreateRequest() {
   }
 
   return (
-    <AppShell title="New request" active="/app/requester/new">
-      <Link to="/app/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground mb-4">
+    <AppShell title="New blood request" active="/app/requester/new">
+      <Link
+        to="/app/dashboard"
+        className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground mb-4 transition-colors"
+      >
         <ArrowLeft size={16} /> Back to dashboard
       </Link>
 
       {optionsLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-36 rounded-2xl" />
           <Skeleton className="h-64 rounded-2xl" />
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[1fr_20rem] gap-6 items-start">
+        <div className="grid lg:grid-cols-[1fr_20rem] gap-6 items-start pb-12 lg:pb-0">
           <form onSubmit={submit}>
-            {/* Urgency selection */}
-            <Card className="mb-5">
-              <CardHeader title="How urgent is this?" subtitle="This drives how aggressively we alert donors and rank sources." />
+            {/* Step 1: Urgency Selection */}
+            <Card className="mb-5 shadow-2xs">
+              <CardHeader
+                title="1. Urgency Level"
+                subtitle="Drives notification frequency, push notifications, and source ranking."
+              />
               <CardBody className="pt-0">
-                <div className="grid sm:grid-cols-3 gap-3">
+                <div className="grid sm:grid-cols-3 gap-2.5 sm:gap-3">
                   {urgencyLevels.map((u) => {
                     const active = urgency === u.value;
                     return (
                       <button
                         key={u.value}
                         type="button"
-                        onClick={() => setUrgency(u.value)}
+                        onClick={() => {
+                          setUrgency(u.value);
+                          if (u.value === "critical") setRequiredBy("Today, within 2 hours");
+                        }}
                         className={cn(
                           "text-left rounded-2xl border-2 p-3.5 transition-all cursor-pointer",
                           active
                             ? u.value === "critical"
-                              ? "border-critical bg-critical-soft/50"
+                              ? "border-critical bg-critical-soft/60 shadow-xs"
                               : u.value === "urgent"
-                              ? "border-urgent bg-urgent-soft/50"
-                              : "border-primary bg-primary-soft/50"
-                            : "border-border bg-card hover:border-[#d6d1c8]",
+                              ? "border-urgent bg-urgent-soft/60 shadow-xs"
+                              : "border-primary bg-primary-soft/60 shadow-xs"
+                            : "border-border bg-card hover:border-border/90 opacity-80 hover:opacity-100",
                         )}
                       >
                         <div className="flex items-center justify-between">
-                          <UrgencyBadge urgency={u.value} />
+                          <UrgencyBadge urgency={u.value} size="sm" pulse={u.value === "critical"} />
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{u.desc}</p>
                       </button>
@@ -110,38 +132,86 @@ export default function CreateRequest() {
               </CardBody>
             </Card>
 
-            {/* Request details */}
-            <Card className="mb-5">
-              <CardHeader title="Patient & blood requirements" />
+            {/* Step 2: Patient & Blood Group Details */}
+            <Card className="mb-5 shadow-2xs">
+              <CardHeader title="2. Blood & Patient Details" />
               <CardBody className="pt-0 space-y-4">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="Blood group needed" required error={touched ? errors.group : undefined}>
-                    <Select
-                      value={group}
-                      onChange={(e) => setGroup(e.target.value as BloodGroup)}
-                      invalid={touched && !!errors.group}
-                    >
-                      <option value="">Select group…</option>
-                      {bloodGroups.map((g) => (
-                        <option key={g.value} value={g.value}>{g.label}</option>
-                      ))}
-                    </Select>
-                  </Field>
-
-                  <Field label="Units required" required hint="1 unit ≈ 450 ml" error={touched ? errors.units : undefined}>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={12}
-                      placeholder="e.g. 2"
-                      value={units}
-                      onChange={(e) => setUnits(e.target.value)}
-                      invalid={touched && !!errors.units}
-                    />
-                  </Field>
+                {/* Blood Group Quick-Pick Chips */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-2">
+                    Blood group needed <span className="text-critical">*</span>
+                  </label>
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                    {bloodGroups.map((g) => {
+                      const isSelected = group === g.value;
+                      return (
+                        <button
+                          key={g.value}
+                          type="button"
+                          onClick={() => setGroup(g.value as BloodGroup)}
+                          className={cn(
+                            "h-12 rounded-xl flex flex-col items-center justify-center font-num font-bold text-base transition-all cursor-pointer border",
+                            isSelected
+                              ? "bg-critical text-critical-foreground border-critical shadow-sm scale-105 ring-2 ring-critical/30"
+                              : "bg-card border-border text-foreground hover:bg-muted"
+                          )}
+                        >
+                          {g.value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {touched && errors.group && (
+                    <p className="mt-1.5 text-xs text-critical font-medium">{errors.group}</p>
+                  )}
                 </div>
 
-                <Field label="Patient name" required hint="Used only for hospital coordination" error={touched ? errors.patient : undefined}>
+                {/* Units Required with Quick Preset Chips */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1.5">
+                    Units required <span className="text-critical">*</span>
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {UNIT_PRESETS.map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setUnits(String(u))}
+                        className={cn(
+                          "px-3.5 py-1.5 rounded-xl text-xs font-bold font-num border transition-all cursor-pointer",
+                          units === String(u)
+                            ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                            : "bg-card border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {u} {u === 1 ? "Unit" : "Units"}
+                      </button>
+                    ))}
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={12}
+                        placeholder="Custom"
+                        value={units}
+                        onChange={(e) => setUnits(e.target.value)}
+                        className="text-xs h-8"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">1 unit ≈ 450 ml whole blood</p>
+                  {touched && errors.units && (
+                    <p className="mt-1 text-xs text-critical font-medium">{errors.units}</p>
+                  )}
+                </div>
+
+                {/* Patient Name */}
+                <Field
+                  label="Patient full name"
+                  required
+                  hint="Shared strictly with verified donors & blood banks"
+                  error={touched ? errors.patient : undefined}
+                >
                   <Input
                     placeholder="e.g. Meera Rao"
                     value={patient}
@@ -150,8 +220,9 @@ export default function CreateRequest() {
                   />
                 </Field>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="Hospital / facility" required error={touched ? errors.hospital : undefined}>
+                {/* Hospital Selection */}
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Hospital / Facility" required error={touched ? errors.hospital : undefined}>
                     <Select
                       value={hospital}
                       onChange={(e) => {
@@ -168,53 +239,97 @@ export default function CreateRequest() {
                     </Select>
                   </Field>
 
-                  <Field label="Location / ward" hint="e.g. ICU Ward 3">
+                  <Field label="Ward / Specific Room" hint="e.g. ICU Bed 4, Emergency wing">
                     <Input
-                      placeholder="Ward, floor, landmark"
+                      placeholder="e.g. ICU Wing A, Floor 2"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                     />
                   </Field>
                 </div>
 
-                <Field label="Required by" required hint="When must the unit be at the hospital?" error={touched ? errors.requiredBy : undefined}>
+                {/* Required By with Fast Presets */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1.5">
+                    Required by <span className="text-critical">*</span>
+                  </label>
+                  <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                    {TIME_PRESETS.map((t) => (
+                      <button
+                        key={t.label}
+                        type="button"
+                        onClick={() => setRequiredBy(t.value)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer",
+                          requiredBy === t.value
+                            ? "bg-primary-soft text-primary border-primary/40 font-bold"
+                            : "bg-muted/60 text-muted-foreground border-border hover:text-foreground"
+                        )}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                   <Input
                     placeholder="e.g. Today, 6:00 PM"
                     value={requiredBy}
                     onChange={(e) => setRequiredBy(e.target.value)}
                     invalid={touched && !!errors.requiredBy}
                   />
-                </Field>
+                  {touched && errors.requiredBy && (
+                    <p className="mt-1 text-xs text-critical font-medium">{errors.requiredBy}</p>
+                  )}
+                </div>
 
-                <Field label="Clinical note (optional)" hint="Helps blood banks and donors triage urgency">
+                {/* Clinical Notes */}
+                <Field label="Clinical note (optional)" hint="Helps blood banks prioritize cross-matching">
                   <Textarea
                     placeholder="e.g. Post-op cardiac surgery, patient stable but low Hb."
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    rows={3}
+                    rows={2}
                   />
                 </Field>
               </CardBody>
             </Card>
 
+            {/* Desktop Actions */}
             <div className="flex items-center justify-between gap-4">
               <Link to="/app/dashboard">
                 <Button variant="ghost">Cancel</Button>
               </Link>
-              <Button type="submit" size="lg" loading={submitting} rightIcon={<ArrowRight size={18} />}>
-                {submitting ? "Publishing & matching…" : "Find matching sources"}
+              <Button
+                type="submit"
+                size="lg"
+                loading={submitting}
+                rightIcon={<ArrowRight size={18} />}
+                className="shadow-sm"
+              >
+                {submitting ? "Ranking sources in real-time…" : "Find matching sources"}
               </Button>
             </div>
           </form>
 
-          {/* Live compatibility sidebar helper */}
-          <aside className="space-y-4">
-            <Card>
-              <CardHeader title="ABO & Rh compatibility" />
+          {/* Compatibility Sidebar Assistant */}
+          <aside className="space-y-4 sticky top-20">
+            <Card className="shadow-2xs">
+              <CardHeader
+                title="Compatibility Matrix"
+                subtitle="Live preview for the selected blood group"
+              />
               <CardBody className="pt-0">
                 <CompatibilityExplainer recipient={group || "A+"} />
               </CardBody>
             </Card>
+
+            <div className="rounded-2xl border border-primary/20 bg-primary-soft/40 p-4 text-xs space-y-2">
+              <p className="font-bold text-primary flex items-center gap-1.5">
+                <ShieldCheck size={16} /> Verified Donor Network
+              </p>
+              <p className="text-muted-foreground leading-relaxed">
+                Requests are ranked by ABO compatibility, driving distance, and donor availability to ensure units arrive in under 30 minutes.
+              </p>
+            </div>
           </aside>
         </div>
       )}
