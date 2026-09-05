@@ -98,6 +98,43 @@ export interface DashboardStats {
   totalDonorsAvailable: number;
 }
 
+export interface DonorStats {
+  donationsCount: number;
+  livesImpacted: number;
+  nextEligibleDate: string;
+  isEligible: boolean;
+  nearbyAlertsCount: number;
+}
+
+export interface DonorDonationRecord {
+  id: string;
+  date: string;
+  hospital: string;
+  units: number;
+  bloodGroup: BloodGroup;
+  status: "completed" | "verified";
+  certificateUrl?: string;
+}
+
+export interface BankStats {
+  totalUnits: number;
+  unitsReserved: number;
+  incomingRequestsCount: number;
+  expiringSoonCount: number;
+  capacityPercentage: number;
+}
+
+export interface BankTriageItem {
+  id: string;
+  hospital: string;
+  bloodGroup: BloodGroup;
+  unitsNeeded: number;
+  unitsAllocated: number;
+  urgency: Urgency;
+  requiredBy: string;
+  status: "pending" | "allocated" | "dispatched";
+}
+
 export interface LandingMatch {
   name: string;
   kind: "bank" | "donor";

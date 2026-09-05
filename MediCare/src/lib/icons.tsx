@@ -230,3 +230,12 @@ export const RotateCcw = (p: P) => (
     <path d="M3 3v5h5" />
   </Svg>
 );
+export const Award = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="8" r="6" />
+    <path d="M15.48 13.93 18 22l-6-3.5L6 22l2.52-8.07" />
+  </Svg>
+);
+export const Minus = (p: P) => (
+  <Svg {...p}><line x1="5" y1="12" x2="19" y2="12" /></Svg>
+);

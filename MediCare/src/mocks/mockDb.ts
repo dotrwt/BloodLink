@@ -9,6 +9,12 @@ import type {
   Hospital,
   CreateRequestPayload,
   RequestStatus,
+  DonorStats,
+  DonorDonationRecord,
+  BankStats,
+  BankTriageItem,
+  InventoryRow,
+  BloodGroup,
 } from "../types/models";
 
 // In-Memory Database Collections
@@ -206,6 +212,29 @@ const hospitalsDb: Hospital[] = [
   { id: "h5", name: "St. John's Medical College Hospital", city: "Bengaluru", address: "Sarjapur Rd" },
 ];
 
+const donorDonationsDb: DonorDonationRecord[] = [
+  { id: "don-1", date: "10 Jun 2026", hospital: "Manipal Hospital, Old Airport Rd", units: 1, bloodGroup: "O+", status: "completed" },
+  { id: "don-2", date: "14 Feb 2026", hospital: "Rotary TTK Blood Bank", units: 1, bloodGroup: "O+", status: "completed" },
+  { id: "don-3", date: "18 Oct 2025", hospital: "Narayana Health City", units: 1, bloodGroup: "O+", status: "completed" },
+];
+
+let bankInventoryDb: InventoryRow[] = [
+  { group: "O-", units: 3, reserved: 2, nearExpiry: 1, capacity: 20 },
+  { group: "O+", units: 14, reserved: 3, nearExpiry: 2, capacity: 30 },
+  { group: "A-", units: 4, reserved: 1, nearExpiry: 0, capacity: 20 },
+  { group: "A+", units: 18, reserved: 4, nearExpiry: 3, capacity: 35 },
+  { group: "B-", units: 2, reserved: 1, nearExpiry: 1, capacity: 15 },
+  { group: "B+", units: 11, reserved: 2, nearExpiry: 0, capacity: 25 },
+  { group: "AB-", units: 1, reserved: 0, nearExpiry: 0, capacity: 10 },
+  { group: "AB+", units: 8, reserved: 1, nearExpiry: 1, capacity: 20 },
+];
+
+const bankTriageDb: BankTriageItem[] = [
+  { id: "trg-1", hospital: "Manipal Hospital", bloodGroup: "O-", unitsNeeded: 2, unitsAllocated: 0, urgency: "critical", requiredBy: "Within 45m", status: "pending" },
+  { id: "trg-2", hospital: "Fortis Hospital", bloodGroup: "A+", unitsNeeded: 3, unitsAllocated: 1, urgency: "urgent", requiredBy: "By 6:00 PM", status: "pending" },
+  { id: "trg-3", hospital: "Columbia Asia", bloodGroup: "B+", unitsNeeded: 1, unitsAllocated: 1, urgency: "routine", requiredBy: "Tomorrow 10 AM", status: "allocated" },
+];
+
 // Async delay simulator
 const delay = (ms = 220) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -349,5 +378,83 @@ export const mockDb = {
   async getHospitals(): Promise<Hospital[]> {
     await delay();
     return [...hospitalsDb];
+  },
+
+  // Donor Methods
+  async getDonorStats(): Promise<DonorStats> {
+    await delay();
+    return {
+      donationsCount: donorDonationsDb.length,
+      livesImpacted: donorDonationsDb.length * 3,
+      nextEligibleDate: "Ready to donate",
+      isEligible: true,
+      nearbyAlertsCount: nearbyEmergenciesDb.filter((e) => !e.isPledged).length,
+    };
+  },
+
+  async getDonorDonations(): Promise<DonorDonationRecord[]> {
+    await delay();
+    return [...donorDonationsDb];
+  },
+
+  // Blood Bank Methods
+  async getBankStats(): Promise<BankStats> {
+    await delay();
+    const totalUnits = bankInventoryDb.reduce((acc, row) => acc + row.units, 0);
+    const unitsReserved = bankInventoryDb.reduce((acc, row) => acc + row.reserved, 0);
+    const totalCapacity = bankInventoryDb.reduce((acc, row) => acc + row.capacity, 0);
+    const expiringSoonCount = bankInventoryDb.reduce((acc, row) => acc + row.nearExpiry, 0);
+    const incomingRequestsCount = bankTriageDb.filter((t) => t.status === "pending").length;
+
+    return {
+      totalUnits,
+      unitsReserved,
+      incomingRequestsCount,
+      expiringSoonCount,
+      capacityPercentage: Math.round((totalUnits / (totalCapacity || 1)) * 100),
+    };
+  },
+
+  async getBankInventory(): Promise<InventoryRow[]> {
+    await delay();
+    return [...bankInventoryDb];
+  },
+
+  async updateInventoryStock(group: BloodGroup, delta: number): Promise<InventoryRow[]> {
+    await delay();
+    bankInventoryDb = bankInventoryDb.map((row) => {
+      if (row.group === group) {
+        const nextUnits = Math.max(0, row.units + delta);
+        return { ...row, units: nextUnits };
+      }
+      return row;
+    });
+    return [...bankInventoryDb];
+  },
+
+  async getBankTriage(): Promise<BankTriageItem[]> {
+    await delay();
+    return [...bankTriageDb];
+  },
+
+  async allocateTriageUnits(id: string, units: number): Promise<BankTriageItem | null> {
+    await delay();
+    const item = bankTriageDb.find((t) => t.id === id);
+    if (!item) return null;
+
+    item.unitsAllocated = Math.min(item.unitsNeeded, item.unitsAllocated + units);
+    if (item.unitsAllocated >= item.unitsNeeded) {
+      item.status = "allocated";
+    }
+
+    // Also update bank inventory reserved count
+    bankInventoryDb = bankInventoryDb.map((row) => {
+      if (row.group === item.bloodGroup) {
+        return { ...row, reserved: row.reserved + units };
+      }
+      return row;
+    });
+
+    return { ...item };
   },
 };

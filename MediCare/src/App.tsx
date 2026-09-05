@@ -1,7 +1,10 @@
 import { matchPath, useRouter } from "./lib/router";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
+import RoleSelect from "./pages/RoleSelect";
+import DonorDashboard from "./pages/donor/DonorDashboard";
+import RequesterDashboard from "./pages/requester/RequesterDashboard";
+import BankDashboard from "./pages/bank/BankDashboard";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import CreateRequest from "./pages/requester/CreateRequest";
@@ -14,20 +17,15 @@ export default function App() {
   const { path } = useRouter();
   const p = path.split("?")[0];
 
-  // Order matters: most specific first.
+  // Public routes
   if (p === "/" || p === "") return <Landing />;
   if (p === "/login") return <Login />;
+  if (p === "/select-role" || p === "/signup") return <RoleSelect />;
 
-  // Single unified dashboard
-  if (
-    p === "/app/dashboard" ||
-    p === "/app/requester" ||
-    p === "/app/donor" ||
-    p === "/app/bank" ||
-    p === "/select-role"
-  ) {
-    return <Dashboard />;
-  }
+  // 3 Distinct Role Dashboards
+  if (p === "/app/donor") return <DonorDashboard />;
+  if (p === "/app/requester" || p === "/app/dashboard") return <RequesterDashboard />;
+  if (p === "/app/bank") return <BankDashboard />;
 
   // Request flow
   if (p === "/app/requester/new") return <CreateRequest />;
