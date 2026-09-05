@@ -3,96 +3,127 @@ import { AppShell } from "../../components/layout/AppShell";
 import { Card, CardBody } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
-import { EmptyState } from "../../components/ui/misc";
+import { EmptyState, ErrorState, Skeleton } from "../../components/ui/misc";
 import { BloodGroupChip, UrgencyBadge } from "../../components/ui/domain";
 import { cn } from "../../lib/cn";
-import { useRouter } from "../../lib/router";
-import { REQUESTS } from "../../lib/mock";
-import type { BloodRequest } from "../../lib/types";
-import { ArrowRight, Hospital, List, Plus } from "../../lib/icons";
-
-const STATUS: Record<BloodRequest["status"], { label: string; tone: "info" | "primary" | "success" | "neutral" }> = {
-  matching: { label: "Matching", tone: "info" },
-  contacted: { label: "Contacted", tone: "info" },
-  accepted: { label: "Accepted", tone: "primary" },
-  en_route: { label: "En route", tone: "primary" },
-  confirmed: { label: "Confirmed", tone: "success" },
-  fulfilled: { label: "Fulfilled", tone: "success" },
-  cancelled: { label: "Cancelled", tone: "neutral" },
-};
-
-type Tab = "all" | "active" | "fulfilled";
+import { Link, useRouter } from "../../lib/router";
+import { useRequests } from "../../hooks/useRequests";
+import { STATUS_LABELS, STATUS_TONES } from "../../constants/statuses";
+import { ArrowLeft, ArrowRight, Clock, Hospital, Plus } from "../../lib/icons";
 
 export default function RequestHistory() {
   const { navigate } = useRouter();
-  const [tab, setTab] = useState<Tab>("all");
+  const { requests, loading, error, refetch } = useRequests();
+  const [filter, setFilter] = useState<"all" | "active" | "fulfilled">("all");
 
-  const filtered = REQUESTS.filter((r) =>
-    tab === "all" ? true : tab === "fulfilled" ? r.status === "fulfilled" : r.status !== "fulfilled" && r.status !== "cancelled",
-  );
+  const filtered = requests.filter((r) => {
+    if (filter === "active") return r.status !== "fulfilled" && r.status !== "cancelled";
+    if (filter === "fulfilled") return r.status === "fulfilled";
+    return true;
+  });
 
   return (
-    <AppShell role="requester" title="Request history" active="/app/requester/history">
-      <div className="flex items-center justify-between gap-4 mb-6">
+    <AppShell title="Request history" active="/app/requester/history">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight lg:hidden">Request history</h1>
-          <p className="text-sm text-muted-foreground mt-1">All requests you've raised.</p>
+          <Link to="/app/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground mb-2">
+            <ArrowLeft size={16} /> Back to dashboard
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight">Request history</h1>
+          <p className="text-sm text-muted-foreground mt-1">All requests created by your organization</p>
         </div>
-        <Button leftIcon={<Plus size={16} />} onClick={() => navigate("/app/requester/new")}>New request</Button>
+        <Link to="/app/requester/new">
+          <Button size="md" leftIcon={<Plus size={16} />}>New request</Button>
+        </Link>
       </div>
 
+      {error && (
+        <div className="mb-6">
+          <ErrorState message={error} retry={refetch} />
+        </div>
+      )}
+
       <div className="inline-flex rounded-xl border border-border bg-card p-1 mb-5">
-        {(["all", "active", "fulfilled"] as const).map((t) => (
+        {[
+          { key: "all", label: "All" },
+          { key: "active", label: "Active" },
+          { key: "fulfilled", label: "Fulfilled" },
+        ].map((f) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={f.key}
+            onClick={() => setFilter(f.key as "all" | "active" | "fulfilled")}
             className={cn(
-              "px-4 h-8 rounded-lg text-sm font-medium capitalize transition-colors",
-              tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              "px-4 h-8 rounded-lg text-sm font-medium capitalize transition-colors cursor-pointer",
+              filter === f.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {t}
+            {f.label}
           </button>
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {loading && (
+        <div className="space-y-3">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+      )}
+
+      {!loading && filtered.length === 0 && (
         <Card>
           <EmptyState
-            icon={<List size={26} />}
-            title="Nothing here yet"
-            description="Requests you raise will be listed here with their outcome."
-            action={<Button leftIcon={<Plus size={16} />} onClick={() => navigate("/app/requester/new")}>Create a request</Button>}
+            icon={<Clock size={28} />}
+            title="No requests found"
+            description="You don't have any requests matching this filter."
+            action={
+              <Button size="sm" onClick={() => setFilter("all")}>Reset filter</Button>
+            }
           />
         </Card>
-      ) : (
+      )}
+
+      {!loading && filtered.length > 0 && (
         <div className="space-y-3">
-          {filtered.map((r) => {
-            const s = STATUS[r.status];
-            const target = r.status === "matching" ? `/app/requester/matches/${r.id}` : r.status === "fulfilled" ? `/app/requester/fulfilled/${r.id}` : `/app/requester/track/${r.id}`;
-            return (
-              <Card key={r.id} interactive onClick={() => navigate(target)}>
-                <CardBody className="flex items-center gap-4">
-                  <BloodGroupChip group={r.bloodGroup} size="lg" tone={r.status === "fulfilled" ? "neutral" : "critical"} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold truncate">{r.units} units · {r.patientName}</p>
-                      <Badge tone={s.tone}>{s.label}</Badge>
+          {filtered.map((r) => (
+            <Card
+              key={r.id}
+              interactive
+              onClick={() =>
+                navigate(
+                  r.status === "matching"
+                    ? `/app/requester/matches/${r.id}`
+                    : `/app/requester/track/${r.id}`
+                )
+              }
+            >
+              <CardBody className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <BloodGroupChip group={r.bloodGroup} size="lg" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <UrgencyBadge urgency={r.urgency} />
+                      <Badge tone={STATUS_TONES[r.status]}>{STATUS_LABELS[r.status]}</Badge>
+                      <span className="text-xs text-muted-foreground font-num">ID: {r.id}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                      <Hospital size={13} /> {r.hospital}
-                      <span className="mx-1">·</span>
-                      <span className="font-num">{r.createdAt}</span>
+                    <h3 className="font-semibold text-base mt-1">
+                      {r.units} units for {r.patientName}
+                    </h3>
+                    <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                      <span className="flex items-center gap-1"><Hospital size={13} /> {r.hospital}</span>
+                      <span>&bull;</span>
+                      <span>Created {r.createdAt}</span>
                     </p>
                   </div>
-                  <div className="hidden sm:flex items-center gap-4">
-                    <UrgencyBadge urgency={r.urgency} size="sm" />
-                    <ArrowRight size={18} className="text-muted-foreground" />
-                  </div>
-                </CardBody>
-              </Card>
-            );
-          })}
+                </div>
+                <div className="flex items-center gap-3 self-end sm:self-center">
+                  <span className="text-sm font-medium text-primary flex items-center gap-1">
+                    Details <ArrowRight size={14} />
+                  </span>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
         </div>
       )}
     </AppShell>

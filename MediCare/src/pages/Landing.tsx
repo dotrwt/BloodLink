@@ -18,6 +18,8 @@ import {
   Zap,
 } from "../lib/icons";
 
+import { useLandingMetrics } from "../hooks/useLandingMetrics";
+
 function PublicNav() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
@@ -42,6 +44,8 @@ function PublicNav() {
 }
 
 export default function Landing() {
+  const { metrics, loading } = useLandingMetrics();
+
   return (
     <div className="min-h-full">
       <PublicNav />
@@ -82,62 +86,86 @@ export default function Landing() {
               </Link>
             </div>
             <dl className="mt-10 grid grid-cols-3 gap-6 max-w-md">
-              {[
-                ["18k+", "donors on call"],
-                ["240+", "verified banks"],
-                ["9 min", "median response"],
-              ].map(([v, l]) => (
-                <div key={l}>
-                  <dt className="font-num text-2xl font-bold text-foreground">{v}</dt>
-                  <dd className="text-xs text-muted-foreground mt-0.5">{l}</dd>
-                </div>
-              ))}
+              {loading || !metrics ? (
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-7 w-16 bg-muted rounded mb-1" />
+                    <div className="h-3 w-20 bg-muted/60 rounded" />
+                  </div>
+                ))
+              ) : (
+                [
+                  { value: metrics.donorsOnCall, label: "donors on call" },
+                  { value: metrics.verifiedBanks, label: "verified banks" },
+                  { value: metrics.medianResponseTime, label: "median response" },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <dt className="font-num text-2xl font-bold text-foreground">{item.value}</dt>
+                    <dd className="text-xs text-muted-foreground mt-0.5">{item.label}</dd>
+                  </div>
+                ))
+              )}
             </dl>
           </div>
 
           {/* Hero card — live request preview */}
           <div className="relative">
-            <div className="rounded-3xl border border-border bg-card shadow-[0_24px_60px_-30px_rgba(0,0,0,0.35)] p-5">
-              <div className="flex items-center justify-between">
-                <UrgencyBadge urgency="critical" pulse />
-                <span className="text-xs text-muted-foreground font-num">12 min ago</span>
-              </div>
-              <div className="mt-4 flex items-center gap-4">
-                <BloodGroupChip group="A+" size="xl" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Needed at</p>
-                  <p className="font-semibold leading-tight">Manipal Hospital</p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <MapPin size={13} /> 3.2 km · <Clock size={13} /> by 6:00 PM
-                  </p>
-                </div>
-                <div className="ml-auto text-right">
-                  <p className="font-num text-2xl font-bold">3</p>
-                  <p className="text-xs text-muted-foreground">units</p>
-                </div>
-              </div>
-              <div className="mt-4 h-px bg-border" />
-              <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Top matches
-              </p>
-              <div className="mt-3 space-y-2">
-                {[
-                  { icon: <Building size={16} />, name: "Sanjeevani Blood Centre", meta: "12 units · 18 min", score: 94 },
-                  { icon: <User size={16} />, name: "Rohit Menon · O-", meta: "2.1 km · 14 min", score: 91 },
-                ].map((m) => (
-                  <div key={m.name} className="flex items-center gap-3 rounded-xl border border-border p-2.5">
-                    <span className="flex size-8 items-center justify-center rounded-lg bg-primary-soft text-primary shrink-0">
-                      {m.icon}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{m.name}</p>
-                      <p className="text-xs text-muted-foreground font-num">{m.meta}</p>
-                    </div>
-                    <span className="ml-auto font-num text-lg font-bold text-primary">{m.score}</span>
+            {loading || !metrics ? (
+              <div className="rounded-3xl border border-border bg-card shadow-lg p-5 animate-pulse space-y-4">
+                <div className="h-5 w-24 bg-muted rounded" />
+                <div className="flex items-center gap-4">
+                  <div className="size-14 rounded-2xl bg-muted" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 w-32 bg-muted rounded" />
+                    <div className="h-3 w-44 bg-muted/60 rounded" />
                   </div>
-                ))}
+                </div>
+                <div className="h-px bg-border my-4" />
+                <div className="space-y-2">
+                  <div className="h-12 bg-muted/50 rounded-xl" />
+                  <div className="h-12 bg-muted/50 rounded-xl" />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-3xl border border-border bg-card shadow-[0_24px_60px_-30px_rgba(0,0,0,0.35)] p-5">
+                <div className="flex items-center justify-between">
+                  <UrgencyBadge urgency={metrics.featuredEmergency.urgency} pulse />
+                  <span className="text-xs text-muted-foreground font-num">{metrics.featuredEmergency.postedAgo}</span>
+                </div>
+                <div className="mt-4 flex items-center gap-4">
+                  <BloodGroupChip group={metrics.featuredEmergency.group} size="xl" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Needed at</p>
+                    <p className="font-semibold leading-tight">{metrics.featuredEmergency.hospital}</p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <MapPin size={13} /> {metrics.featuredEmergency.distance} · <Clock size={13} /> by 6:00 PM
+                    </p>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <p className="font-num text-2xl font-bold">{metrics.featuredEmergency.units}</p>
+                    <p className="text-xs text-muted-foreground">units</p>
+                  </div>
+                </div>
+                <div className="mt-4 h-px bg-border" />
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Top matches
+                </p>
+                <div className="mt-3 space-y-2">
+                  {(metrics.topMatches ?? []).map((m) => (
+                    <div key={m.name} className="flex items-center gap-3 rounded-xl border border-border p-2.5">
+                      <span className="flex size-8 items-center justify-center rounded-lg bg-primary-soft text-primary shrink-0">
+                        {m.kind === "bank" ? <Building size={16} /> : <User size={16} />}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{m.name}</p>
+                        <p className="text-xs text-muted-foreground font-num">{m.meta}</p>
+                      </div>
+                      <span className="ml-auto font-num text-lg font-bold text-primary">{m.score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="absolute -bottom-4 -left-4 rounded-2xl border border-border bg-card shadow-lg px-4 py-3 hidden sm:flex items-center gap-2.5">
               <span className="flex size-8 items-center justify-center rounded-full bg-success-soft text-success">
                 <ShieldCheck size={17} />
@@ -205,8 +233,8 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <Link to="/select-role" className="inline-block mt-8">
-                <Button rightIcon={<ArrowRight size={17} />}>Choose your role</Button>
+              <Link to="/app/dashboard" className="inline-block mt-8">
+                <Button rightIcon={<ArrowRight size={17} />}>Enter Dashboard</Button>
               </Link>
             </div>
             <div className="rounded-3xl border border-border bg-background p-6">

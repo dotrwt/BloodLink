@@ -1,170 +1,130 @@
 import { useState, type FormEvent } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import { Card, CardBody, CardHeader } from "../components/ui/Card";
-import { Field, Input, Select } from "../components/ui/Field";
 import { Button } from "../components/ui/Button";
-import { Badge } from "../components/ui/Badge";
-import { Avatar, Divider } from "../components/ui/misc";
+import { Field, Input, Select } from "../components/ui/Field";
+import { Avatar, Skeleton, ErrorState } from "../components/ui/misc";
 import { BloodGroupChip } from "../components/ui/domain";
-import { cn } from "../lib/cn";
-import { getRole } from "../lib/session";
-import { BLOOD_GROUPS } from "../lib/blood";
-import { CURRENT_USER } from "../lib/mock";
-import { Building, Check, DropletFill, ShieldCheck, User } from "../lib/icons";
-import type { Role } from "../lib/types";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useOptions } from "../hooks/useOptions";
+import type { BloodGroup, UserProfile } from "../types/models";
+import { Check, ShieldCheck } from "../lib/icons";
 
-const ROLE_TITLE: Record<Role, string> = {
-  requester: "Requester",
-  donor: "Donor",
-  bank: "Blood Bank",
-};
+interface ProfileFormProps {
+  user: UserProfile;
+  bloodGroups: { value: BloodGroup; label: string }[];
+  updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile>;
+}
 
-export default function Profile() {
-  const role = getRole();
+function ProfileForm({ user, bloodGroups, updateProfile }: ProfileFormProps) {
+  const [name, setName] = useState(user.name);
+  const [org, setOrg] = useState(user.org || "");
+  const [location, setLocation] = useState(user.location);
+  const [bloodGroup, setBloodGroup] = useState<BloodGroup>(user.bloodGroup);
   const [saved, setSaved] = useState(false);
-  const name =
-    role === "donor" ? CURRENT_USER.donor.name : role === "bank" ? CURRENT_USER.bank.name : CURRENT_USER.requester.name;
+  const [saving, setSaving] = useState(false);
 
-  function save(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
+    setSaving(true);
+    try {
+      await updateProfile({ name, org, location, bloodGroup });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2400);
+    } catch (err) {
+      console.error("Failed to save profile", err);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <AppShell role={role} title="Profile & settings" active="/app/profile">
-      <div className="max-w-3xl">
-        <h1 className="text-2xl font-bold tracking-tight lg:hidden mb-6">Profile &amp; settings</h1>
+    <>
+      {/* Identity card */}
+      <Card className="mb-6">
+        <CardBody className="flex items-center gap-4">
+          <Avatar name={user.name} size="lg" />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-semibold truncate">{user.name}</h2>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <BloodGroupChip group={user.bloodGroup} size="sm" />
+              <span className="text-xs text-success flex items-center gap-1 font-medium">
+                <ShieldCheck size={13} /> Verified identity
+              </span>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
-        {/* Identity header */}
-        <Card className="mb-5">
-          <CardBody className="flex items-center gap-4">
-            <div className="relative">
-              {role === "bank" ? (
-                <span className="flex size-16 items-center justify-center rounded-full bg-primary-soft text-primary">
-                  <Building size={30} />
-                </span>
-              ) : (
-                <Avatar name={name} size={64} />
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl font-bold truncate">{name}</h2>
-                <Badge tone="primary" icon={role === "donor" ? <DropletFill size={12} /> : role === "bank" ? <Building size={12} /> : <User size={12} />}>
-                  {ROLE_TITLE[role]}
-                </Badge>
-              </div>
-              {role === "bank" ? (
-                <p className="mt-1 text-sm text-success flex items-center gap-1.5 font-medium">
-                  <ShieldCheck size={15} /> Verified institution
-                </p>
-              ) : role === "donor" ? (
-                <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
-                  Blood group <BloodGroupChip group={CURRENT_USER.donor.bloodGroup} size="sm" />
-                </p>
-              ) : (
-                <p className="mt-1 text-sm text-muted-foreground">{CURRENT_USER.requester.org}</p>
-              )}
-            </div>
+      <form onSubmit={submit} className="space-y-5">
+        <Card>
+          <CardHeader title="Personal information" />
+          <CardBody className="pt-0 space-y-4">
+            <Field label="Full name" required>
+              <Input value={name} onChange={(e) => setName(e.target.value)} required />
+            </Field>
+
+            <Field label="Organization / affiliation" hint="e.g. Hospital coordinator, Family advocate, Individual">
+              <Input value={org} onChange={(e) => setOrg(e.target.value)} />
+            </Field>
+
+            <Field label="City / district" required>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} required />
+            </Field>
+
+            <Field label="Blood group" required>
+              <Select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value as BloodGroup)}>
+                {bloodGroups.map((bg) => (
+                  <option key={bg.value} value={bg.value}>{bg.label}</option>
+                ))}
+              </Select>
+            </Field>
           </CardBody>
         </Card>
 
-        <form onSubmit={save}>
-          <Card className="mb-5">
-            <CardHeader title="Account details" subtitle="Update your contact information." />
-            <CardBody className="grid sm:grid-cols-2 gap-4">
-              <Field label="Full name" required className="sm:col-span-2">
-                <Input defaultValue={name} />
-              </Field>
-              <Field label="Email">
-                <Input type="email" defaultValue="ananya.rao@example.com" />
-              </Field>
-              <Field label="Phone">
-                <Input type="tel" defaultValue="+91 98450 12345" />
-              </Field>
-              {role === "donor" && (
-                <Field label="Blood group" required>
-                  <Select defaultValue={CURRENT_USER.donor.bloodGroup}>
-                    {BLOOD_GROUPS.map((g) => (
-                      <option key={g}>{g}</option>
-                    ))}
-                  </Select>
-                </Field>
-              )}
-              <Field label="Location" className={role === "donor" ? "" : "sm:col-span-2"}>
-                <Input defaultValue="Bengaluru, Karnataka" />
-              </Field>
-            </CardBody>
-          </Card>
-
-          {role === "donor" && (
-            <Card className="mb-5">
-              <CardHeader title="Donation preferences" subtitle="Control when and how you're contacted." />
-              <CardBody className="divide-y divide-border">
-                {[
-                  ["Available for emergencies", "Get notified about nearby critical requests", true],
-                  ["Auto-share ETA", "Share live location when you accept a request", true],
-                  ["Weekend donations only", "Limit requests to Saturdays and Sundays", false],
-                ].map(([t, d, on], i) => (
-                  <Toggle key={i} title={t as string} desc={d as string} defaultOn={on as boolean} />
-                ))}
-              </CardBody>
-            </Card>
+        <div className="flex items-center justify-between">
+          {saved && (
+            <span className="text-sm font-medium text-success flex items-center gap-1.5">
+              <Check size={16} /> Changes saved successfully
+            </span>
           )}
-
-          <div className="flex items-center gap-3">
-            <Button type="submit" leftIcon={saved ? <Check size={16} /> : undefined}>
-              {saved ? "Saved" : "Save changes"}
+          <div className="ml-auto">
+            <Button type="submit" size="md" loading={saving}>
+              {saving ? "Saving…" : "Save changes"}
             </Button>
-            {saved && (
-              <span className="text-sm text-success font-medium animate-bl-fade-up">
-                Your changes have been saved.
-              </span>
-            )}
           </div>
-        </form>
-
-        <Divider className="my-8" />
-        <div className="rounded-2xl border border-critical/20 bg-critical-soft/40 p-5">
-          <h3 className="font-semibold text-critical">Danger zone</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Deactivating removes you from matching until you return.
-          </p>
-          <Button variant="outline" size="sm" className="mt-4 border-critical/30 text-critical hover:bg-critical-soft">
-            Deactivate account
-          </Button>
         </div>
-      </div>
-    </AppShell>
+      </form>
+    </>
   );
 }
 
-function Toggle({ title, desc, defaultOn }: { title: string; desc: string; defaultOn: boolean }) {
-  const [on, setOn] = useState(defaultOn);
+export default function Profile() {
+  const { user, loading, error, refetch, updateProfile } = useCurrentUser();
+  const { bloodGroups } = useOptions();
+
   return (
-    <div className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        onClick={() => setOn((v) => !v)}
-        className={cn(
-          "relative h-6 w-11 rounded-full transition-colors shrink-0",
-          on ? "bg-primary" : "bg-input",
+    <AppShell title="Profile" active="/app/profile">
+      <div className="max-w-2xl">
+        <h1 className="text-2xl font-bold tracking-tight mb-1 lg:hidden">Profile</h1>
+        <p className="text-sm text-muted-foreground mb-6">Manage your account information and preferences</p>
+
+        {error && (
+          <div className="mb-6">
+            <ErrorState message={error} retry={refetch} />
+          </div>
         )}
-      >
-        <span
-          className={cn(
-            "absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform",
-            on ? "translate-x-5" : "translate-x-0.5",
-          )}
-        />
-      </button>
-    </div>
+
+        {loading || !user ? (
+          <div className="space-y-4">
+            <Skeleton className="h-32 rounded-2xl" />
+            <Skeleton className="h-64 rounded-2xl" />
+          </div>
+        ) : (
+          <ProfileForm key={user.id} user={user} bloodGroups={bloodGroups} updateProfile={updateProfile} />
+        )}
+      </div>
+    </AppShell>
   );
 }

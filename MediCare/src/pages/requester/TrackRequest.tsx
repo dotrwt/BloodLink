@@ -3,210 +3,196 @@ import { AppShell } from "../../components/layout/AppShell";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
-import { Avatar, Divider } from "../../components/ui/misc";
-import { BloodGroupChip, StatusStepper, UrgencyBadge } from "../../components/ui/domain";
+import { Avatar, ErrorState, Skeleton } from "../../components/ui/misc";
+import { StatusStepper } from "../../components/ui/domain";
 import { Link, matchPath, useRouter } from "../../lib/router";
-import { CANDIDATES, REQUESTS } from "../../lib/mock";
-import type { RequestStatus } from "../../lib/types";
+import { useRequestDetail } from "../../hooks/useRequestDetail";
+import type { RequestStatus } from "../../types/models";
 import {
   ArrowLeft,
   Building,
   CheckCircle,
   Clock,
+  Hospital,
   MapPin,
-  Navigation,
   Phone,
+  Play,
+  RotateCcw,
   ShieldCheck,
-  Truck,
+  User,
 } from "../../lib/icons";
 
-const SEQ: RequestStatus[] = ["contacted", "accepted", "en_route", "confirmed"];
+const SEQ: RequestStatus[] = ["matching", "contacted", "accepted", "en_route", "confirmed", "fulfilled"];
 
 export default function TrackRequest() {
   const { path, navigate } = useRouter();
   const params = matchPath("/app/requester/track/:id", path);
-  const request = REQUESTS.find((r) => r.id === params?.id) ?? REQUESTS[0];
+  const requestId = params?.id;
 
-  const sourceId = new URLSearchParams(path.split("?")[1] ?? "").get("source");
-  const source =
-    CANDIDATES.find((c) => c.id === sourceId) ??
-    CANDIDATES.find((c) => c.name === request.source?.name) ??
-    CANDIDATES[0];
+  const { request, loading, error, refetch, updateStatus } = useRequestDetail(requestId);
 
-  const [status, setStatus] = useState<RequestStatus>(
-    request.status === "matching" ? "contacted" : request.status,
-  );
-  const [auto, setAuto] = useState(true);
+  const [auto, setAuto] = useState(false);
   const timer = useRef<number | null>(null);
+
+  const status = request?.status || "contacted";
 
   useEffect(() => {
     if (!auto) return;
-    if (status === "confirmed") return;
+    if (status === "fulfilled" || status === "confirmed") return;
     timer.current = window.setTimeout(() => {
       const next = SEQ[Math.min(SEQ.indexOf(status) + 1, SEQ.length - 1)];
-      setStatus(next);
+      updateStatus(next);
     }, 3200);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [status, auto]);
+  }, [status, auto, updateStatus]);
 
+  if (loading) {
+    return (
+      <AppShell title="Track request" active="/app/requester">
+        <div className="space-y-4">
+          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (error || !request) {
+    return (
+      <AppShell title="Track request" active="/app/requester">
+        <ErrorState message={error || "Request not found"} retry={refetch} />
+      </AppShell>
+    );
+  }
+
+  const source = request.source || { name: "Sanjeevani Blood Centre", kind: "bank" as const };
   const isBank = source.kind === "bank";
 
   const statusCopy: Record<RequestStatus, { title: string; body: string }> = {
     matching: { title: "Finding matches", body: "Searching for compatible sources." },
-    contacted: { title: `${source.name} has been contacted`, body: "Waiting for them to accept the request." },
+    contacted: { title: `${source.name} has been contacted`, body: "Waiting for confirmation." },
     accepted: { title: `${source.name} accepted`, body: isBank ? "Units are being prepared for dispatch." : "The donor is preparing to head over." },
-    en_route: { title: isBank ? "Units dispatched" : `${source.name} is en route`, body: `Estimated arrival in ~${source.etaMin} minutes.` },
+    en_route: { title: isBank ? "Units dispatched" : `${source.name} is en route`, body: "Estimated arrival in ~18 minutes." },
     confirmed: { title: "Blood confirmed at hospital", body: "The unit has been received. You can mark this request fulfilled." },
     fulfilled: { title: "Fulfilled", body: "This request is complete." },
-    cancelled: { title: "Cancelled", body: "" },
+    cancelled: { title: "Cancelled", body: "This request has been cancelled." },
   };
-  const copy = statusCopy[status];
+
+  function advance() {
+    const i = SEQ.indexOf(status);
+    if (i < SEQ.length - 1) updateStatus(SEQ[i + 1]);
+  }
+
+  function reset() {
+    updateStatus("contacted");
+  }
 
   return (
-    <AppShell role="requester" title="Track request" active="/app/requester">
-      <Link to="/app/requester" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft size={16} /> Back to dashboard
-      </Link>
-
-      {/* Live status banner */}
-      <div className="rounded-2xl bg-primary text-primary-foreground p-5 mb-5 flex items-center gap-4">
-        <span className="relative flex size-12 items-center justify-center rounded-2xl bg-white/15 shrink-0">
-          {status === "confirmed" ? <CheckCircle size={26} /> : status === "en_route" ? <Truck size={26} /> : <Clock size={26} />}
-          {status !== "confirmed" && (
-            <span className="absolute inset-0 rounded-2xl border-2 border-white/40 animate-bl-pulse" />
-          )}
-        </span>
-        <div className="min-w-0">
-          <p className="font-semibold text-lg leading-tight">{copy.title}</p>
-          <p className="text-primary-foreground/85 text-sm mt-0.5">{copy.body}</p>
-        </div>
+    <AppShell title="Track request" active="/app/requester">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <Link to="/app/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <ArrowLeft size={16} /> Back to dashboard
+        </Link>
+        <span className="text-xs text-muted-foreground font-num">ID: {request.id}</span>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_20rem] gap-6 items-start">
-        <div className="space-y-5">
-          <Card>
-            <CardHeader
-              title="Request status"
-              action={<Badge tone={status === "confirmed" ? "success" : "primary"}>{status === "confirmed" ? "Confirmed" : "Live"}</Badge>}
-            />
-            <CardBody>
-              <div className="hidden sm:block"><StatusStepper status={status} /></div>
-              <div className="sm:hidden"><StatusStepper status={status} orientation="vertical" /></div>
-
-              <Divider className="my-5" />
-              <div className="flex items-center gap-3 text-sm">
-                {auto && status !== "confirmed" ? (
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <span className="size-2 rounded-full bg-primary animate-bl-pulse" />
-                    Updating live…
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">
-                    {status === "confirmed" ? "All steps complete." : "Live updates paused."}
-                  </span>
-                )}
-                <div className="ml-auto flex gap-2">
-                  {status !== "confirmed" && (
-                    <Button size="sm" variant="outline" onClick={() => { setAuto(false); const next = SEQ[Math.min(SEQ.indexOf(status) + 1, SEQ.length - 1)]; setStatus(next); }}>
-                      Advance step
-                    </Button>
-                  )}
-                  {status === "confirmed" && (
-                    <Button size="sm" rightIcon={<CheckCircle size={15} />} onClick={() => navigate(`/app/requester/fulfilled/${request.id}`)}>
-                      Mark fulfilled
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          {/* Map placeholder with ETA */}
-          <Card>
-            <CardHeader title={isBank ? "Dispatch route" : "Donor location"} subtitle={`${source.distanceKm.toFixed(1)} km · ETA ~${source.etaMin} min`} />
-            <CardBody>
-              <div
-                className="relative h-48 rounded-xl border border-border overflow-hidden"
-                style={{ background: "repeating-linear-gradient(45deg, #eef1ee 0 12px, #f4f6f4 12px 24px)" }}
-              >
-                <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                  <path d="M40 150 C 120 120, 160 60, 300 50" fill="none" stroke="#0d6b63" strokeWidth="3" strokeDasharray="7 6" />
-                </svg>
-                <span className="absolute" style={{ left: 28, top: 138 }}>
-                  <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                    {isBank ? <Building size={16} /> : <Navigation size={16} />}
-                  </span>
-                </span>
-                <span className="absolute" style={{ right: 24, top: 34 }}>
-                  <span className="flex size-8 items-center justify-center rounded-full bg-critical text-critical-foreground shadow">
-                    <MapPin size={16} />
-                  </span>
-                </span>
-                <span className="absolute bottom-3 right-3 rounded-lg bg-card/95 px-2.5 py-1 text-xs font-num font-semibold shadow border border-border">
-                  ETA {source.etaMin} min
-                </span>
-              </div>
-            </CardBody>
-          </Card>
+      {/* Main tracking card */}
+      <Card className="mb-6 overflow-hidden">
+        <div className="bg-primary text-primary-foreground p-6">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <Badge tone="neutral" className="bg-white/15 text-primary-foreground border-white/20">
+              Live tracking
+            </Badge>
+            <span className="text-xs text-primary-foreground/80 font-num">Updated just now</span>
+          </div>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight">
+            {statusCopy[status].title}
+          </h1>
+          <p className="mt-1 text-sm text-primary-foreground/85">
+            {statusCopy[status].body}
+          </p>
         </div>
 
-        {/* Source + request info */}
-        <div className="lg:sticky lg:top-24 space-y-4">
-          <Card>
-            <CardHeader title="Selected source" />
-            <CardBody>
-              <div className="flex items-center gap-3">
-                {isBank ? (
-                  <span className="flex size-11 items-center justify-center rounded-full bg-primary-soft text-primary"><Building size={22} /></span>
-                ) : (
-                  <Avatar name={source.name} size={44} />
-                )}
-                <div className="min-w-0">
-                  <p className="font-semibold truncate flex items-center gap-1.5">
-                    {source.name}
-                    {source.verified && <ShieldCheck size={15} className="text-primary" />}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{isBank ? "Blood bank" : "Donor"} · {source.bloodGroup}</p>
-                </div>
+        <CardBody className="p-6">
+          <StatusStepper status={status} />
+
+          {/* Source information card */}
+          <div className="mt-6 rounded-2xl border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Avatar name={source.name} size="lg" icon={isBank ? <Building size={20} /> : <User size={20} />} />
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  {isBank ? "Partner Blood Bank" : "Verified Volunteer Donor"}
+                </p>
+                <p className="font-semibold text-base">{source.name}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                  <span className="flex items-center gap-1 text-success"><ShieldCheck size={13} /> Verified</span>
+                </p>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <Info label="Distance" value={`${source.distanceKm.toFixed(1)} km`} />
-                <Info label="ETA" value={`${source.etaMin} min`} />
-              </div>
-              <Button variant="outline" fullWidth className="mt-4" leftIcon={<Phone size={16} />}>
-                Call {isBank ? "bank" : "donor"}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" leftIcon={<Phone size={14} />}>
+                Call coordinator
               </Button>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader title="Request" />
-            <CardBody className="space-y-3">
-              <div className="flex items-center gap-3">
-                <BloodGroupChip group={request.bloodGroup} size="lg" />
-                <div>
-                  <p className="font-semibold">{request.units} units · {request.patientName}</p>
-                  <UrgencyBadge urgency={request.urgency} size="sm" />
-                </div>
-              </div>
-              <Divider />
-              <Info label="Hospital" value={request.hospital} />
-              <Info label="Required by" value={request.requiredBy} />
-            </CardBody>
-          </Card>
-        </div>
-      </div>
+          {/* Interactive demo advancement */}
+          <div className="mt-6 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span>Simulate status:</span>
+              <Button size="sm" variant="outline" onClick={advance} disabled={status === "fulfilled"}>
+                Next step
+              </Button>
+              <Button
+                size="sm"
+                variant={auto ? "primary" : "ghost"}
+                leftIcon={<Play size={12} />}
+                onClick={() => setAuto((v) => !v)}
+              >
+                {auto ? "Auto playing" : "Auto play"}
+              </Button>
+              <Button size="sm" variant="ghost" leftIcon={<RotateCcw size={12} />} onClick={reset}>
+                Reset
+              </Button>
+            </div>
+
+            {status === "confirmed" && (
+              <Button
+                size="sm"
+                variant="primary"
+                leftIcon={<CheckCircle size={14} />}
+                onClick={() => {
+                  updateStatus("fulfilled");
+                  navigate(`/app/requester/fulfilled/${request.id}`);
+                }}
+              >
+                Mark as fulfilled
+              </Button>
+            )}
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Hospital details */}
+      <Card>
+        <CardHeader title="Delivery Destination" />
+        <CardBody className="pt-0 space-y-2 text-sm text-muted-foreground">
+          <p className="flex items-center gap-2 text-foreground font-medium">
+            <Hospital size={15} /> {request.hospital}
+          </p>
+          <p className="flex items-center gap-2">
+            <MapPin size={15} /> {request.location}
+          </p>
+          <p className="flex items-center gap-2">
+            <Clock size={15} /> Required by: {request.requiredBy}
+          </p>
+        </CardBody>
+      </Card>
     </AppShell>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium text-sm mt-0.5">{value}</p>
-    </div>
   );
 }

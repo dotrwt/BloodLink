@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
 import { Link, useRouter } from "../../lib/router";
-import type { Role } from "../../lib/types";
+import type { Role } from "../../types/models";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
+import { useNotifications } from "../../hooks/useNotifications";
 import {
   Bell,
   DropletFill,
@@ -11,7 +13,6 @@ import {
   Plus,
   User,
 } from "../../lib/icons";
-import { NOTIFICATIONS } from "../../lib/mock";
 
 type NavItem = { label: string; to: string; icon: typeof Home };
 
@@ -45,10 +46,19 @@ export function AppShell({
   active?: string;
 }) {
   const { path } = useRouter();
-  const unread = NOTIFICATIONS.filter((n) => n.unread).length;
+  const { user } = useCurrentUser();
+  const { unreadCount } = useNotifications();
 
   const isActive = (to: string) =>
     active ? to === active : path === to || (to !== "/app/dashboard" && path.startsWith(to));
+
+  const userName = user?.name || "Member";
+  const userInitials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="min-h-full lg:grid lg:grid-cols-[16rem_1fr]">
@@ -64,7 +74,7 @@ export function AppShell({
             </span>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground leading-none">Signed in as</p>
-              <p className="text-sm font-semibold truncate">Alex Morgan</p>
+              <p className="text-sm font-semibold truncate">{userName}</p>
             </div>
           </div>
         </div>
@@ -82,9 +92,9 @@ export function AppShell({
             >
               <it.icon size={18} />
               {it.label}
-              {it.label === "Alerts" && unread > 0 && (
+              {it.label === "Alerts" && unreadCount > 0 && (
                 <span className="ml-auto font-num text-[11px] font-bold bg-critical text-critical-foreground rounded-full px-1.5 py-0.5 leading-none">
-                  {unread}
+                  {unreadCount}
                 </span>
               )}
             </Link>
@@ -115,7 +125,7 @@ export function AppShell({
               aria-label="Notifications"
             >
               <Bell size={18} />
-              {unread > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute top-2 right-2 size-2 rounded-full bg-critical ring-2 ring-background" />
               )}
             </Link>
@@ -124,9 +134,9 @@ export function AppShell({
               className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-muted text-sm font-medium"
             >
               <span className="flex size-7 items-center justify-center rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold">
-                AM
+                {userInitials}
               </span>
-              <span className="hidden sm:inline">Alex</span>
+              <span className="hidden sm:inline">{userName.split(" ")[0]}</span>
             </Link>
           </div>
         </header>
@@ -150,7 +160,7 @@ export function AppShell({
           >
             <span className="relative">
               <it.icon size={20} />
-              {it.label === "Alerts" && unread > 0 && (
+              {it.label === "Alerts" && unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 size-2 rounded-full bg-critical" />
               )}
             </span>

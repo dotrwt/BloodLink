@@ -5,11 +5,14 @@ export function Avatar({
   name,
   size = 40,
   tone = "primary",
+  icon,
 }: {
   name: string;
-  size?: number;
+  size?: number | "sm" | "md" | "lg";
   tone?: "primary" | "neutral";
+  icon?: ReactNode;
 }) {
+  const pixelSize = typeof size === "number" ? size : size === "sm" ? 32 : size === "lg" ? 48 : 40;
   const initials = name
     .split(" ")
     .slice(0, 2)
@@ -24,9 +27,9 @@ export function Avatar({
           ? "bg-primary-soft text-primary"
           : "bg-muted text-muted-foreground",
       )}
-      style={{ width: size, height: size, fontSize: size * 0.36 }}
+      style={{ width: pixelSize, height: pixelSize, fontSize: pixelSize * 0.36 }}
     >
-      {initials}
+      {icon || initials}
     </span>
   );
 }
@@ -83,13 +86,20 @@ export function EmptyState({
 
 export function ErrorState({
   title = "Something went wrong",
-  description = "We couldn't load this right now. Please try again.",
+  description,
+  message,
   onRetry,
+  retry,
 }: {
   title?: string;
   description?: string;
+  message?: string;
   onRetry?: () => void;
+  retry?: () => void;
 }) {
+  const desc = message || description || "We couldn't load this right now. Please try again.";
+  const handleRetry = onRetry || retry;
+
   return (
     <div className="flex flex-col items-center justify-center text-center px-6 py-14">
       <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-critical-soft text-critical">
@@ -98,10 +108,10 @@ export function ErrorState({
         </svg>
       </div>
       <h3 className="text-base font-semibold">{title}</h3>
-      <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">{description}</p>
-      {onRetry && (
+      <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">{desc}</p>
+      {handleRetry && (
         <button
-          onClick={onRetry}
+          onClick={handleRetry}
           className="mt-5 inline-flex h-10 items-center rounded-xl border border-input bg-card px-4 text-sm font-medium hover:bg-muted"
         >
           Try again
