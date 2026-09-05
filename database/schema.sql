@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS bloodlink_db;
-USE bloodlink_db;
+CREATE DATABASE IF NOT EXISTS bloodlink123;
+USE bloodlink123;
 CREATE TABLE IF NOT EXISTS users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS blood_banks (
 
 -- dashboard sql
 
-USE bloodlink_db;
+USE bloodlink123;
 
 CREATE TABLE blood_requests (
 
@@ -113,7 +113,7 @@ CREATE TABLE blood_requests (
         ON DELETE CASCADE
 );
 
-USE bloodlink_db;
+USE bloodlink123;
 
 CREATE TABLE donor_responses (
 
@@ -148,7 +148,7 @@ CREATE TABLE donor_responses (
         ON DELETE CASCADE
 );
 
-USE bloodlink_db;
+USE bloodlink123;
 
 CREATE TABLE donations (
 
@@ -183,7 +183,7 @@ CREATE TABLE donations (
         ON DELETE SET NULL
 );
 
-USE bloodlink_db;
+USE bloodlink123;
 
 CREATE TABLE blood_inventory (
 
@@ -209,7 +209,7 @@ CREATE TABLE blood_inventory (
         ON DELETE CASCADE
 );
 
-USE bloodlink_db;
+USE bloodlink123;
 
 CREATE TABLE inventory_batches (
     batch_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -227,7 +227,7 @@ CREATE TABLE inventory_batches (
         ON DELETE CASCADE
 );
 
-USE bloodlink_db;
+USE bloodlink123;
 
 CREATE TABLE blood_bank_responses (
     response_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -249,7 +249,7 @@ CREATE TABLE blood_bank_responses (
         ON DELETE CASCADE
 );
 
-USE bloodlink_db;
+USE bloodlink123;
 
 CREATE TABLE notifications (
     notification_id INT AUTO_INCREMENT PRIMARY KEY,
