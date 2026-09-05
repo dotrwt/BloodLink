@@ -53,9 +53,13 @@ export function useRequestDetail(id: string | undefined) {
 
   const updateStatus = async (status: RequestStatus) => {
     if (!request) return;
+    // Optimistically update request status immediately for instant UI feedback
+    setRequest((prev) => (prev ? { ...prev, status } : null));
     try {
       const updated = await requestService.updateStatus(request.id, status);
-      if (updated) setRequest(updated);
+      if (updated) {
+        setRequest((prev) => (prev ? { ...prev, ...updated, status } : updated));
+      }
     } catch (err) {
       console.error("Failed to update status", err);
     }

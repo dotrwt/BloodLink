@@ -154,11 +154,35 @@ export const requestService = {
     if (token && !isNaN(Number(numericId))) {
       try {
         const backendStatus = mapUiStatusToBackend(status);
-        await apiClient.patch(`/api/requests/${numericId}/status`, {
+        const res = await apiClient.patch<any>(`/api/requests/${numericId}/status`, {
           status: backendStatus,
         });
-      } catch {
-        /* fallback to mock */
+        if (res && res.id) {
+          const updatedReq: BloodRequest = {
+            id: `req-${res.id}`,
+            patientName: res.patient_reference || res.patient_name || `Patient #${res.id}`,
+            bloodGroup: (res.blood_group || "O+") as any,
+            units: res.units_required || 1,
+            unitsSecured: res.units_fulfilled || 0,
+            hospital: res.hospital_name || "Emergency Medical Hospital",
+            location: `${res.area ? res.area + ", " : ""}${res.city || "Bengaluru"}`,
+            urgency: ((res.urgency || "urgent").toLowerCase()) as any,
+            requiredBy: res.required_by
+              ? new Date(res.required_by).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : "Urgent",
+            createdAt: "Recently",
+            status: mapBackendStatus(res.status),
+            note: res.notes || undefined,
+            source: {
+              name: status === "accepted" || status === "en_route" ? "Rohit Menon" : "Sanjeevani Blood Centre",
+              kind: status === "accepted" || status === "en_route" ? "donor" : "bank",
+            },
+          };
+          mockDb.upsertRequest(updatedReq);
+          return updatedReq;
+        }
+      } catch (err) {
+        console.warn("Backend updateStatus call failed, falling back to mockDb:", err);
       }
     }
     return await mockDb.updateRequestStatus(id, status);

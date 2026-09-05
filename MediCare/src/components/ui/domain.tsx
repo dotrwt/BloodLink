@@ -98,9 +98,11 @@ function statusIndex(s: RequestStatus): number {
 export function StatusStepper({
   status,
   orientation = "horizontal",
+  onStepClick,
 }: {
   status: RequestStatus;
   orientation?: "horizontal" | "vertical";
+  onStepClick?: (step: RequestStatus) => void;
 }) {
   const current = statusIndex(status);
 
@@ -111,14 +113,18 @@ export function StatusStepper({
           const done = i < current;
           const active = i === current;
           return (
-            <li key={step.key} className="flex gap-3 pb-6 last:pb-0">
+            <li
+              key={step.key}
+              onClick={() => onStepClick?.(step.key)}
+              className={cn("flex gap-3 pb-6 last:pb-0", onStepClick && "cursor-pointer select-none group")}
+            >
               <div className="relative flex flex-col items-center">
                 <span
                   className={cn(
-                    "flex size-7 items-center justify-center rounded-full border-2 text-xs font-bold shrink-0 z-10",
+                    "flex size-7 items-center justify-center rounded-full border-2 text-xs font-bold shrink-0 z-10 transition-transform group-hover:scale-105",
                     done && "bg-success border-success text-success-foreground",
-                    active && "bg-primary border-primary text-primary-foreground",
-                    !done && !active && "bg-card border-border text-muted-foreground",
+                    active && "bg-primary border-primary text-primary-foreground shadow-xs",
+                    !done && !active && "bg-card border-border text-muted-foreground group-hover:border-primary/50",
                   )}
                 >
                   {done ? <Check size={14} /> : i + 1}
@@ -135,8 +141,8 @@ export function StatusStepper({
               <div className="pt-0.5">
                 <p
                   className={cn(
-                    "text-sm font-semibold",
-                    active ? "text-foreground" : done ? "text-foreground" : "text-muted-foreground",
+                    "text-sm font-semibold transition-colors",
+                    active ? "text-foreground" : done ? "text-foreground" : "text-muted-foreground group-hover:text-foreground",
                   )}
                 >
                   {step.label}
@@ -161,22 +167,29 @@ export function StatusStepper({
         const done = i < current;
         const active = i === current;
         return (
-          <div key={step.key} className="flex items-center flex-1 last:flex-none">
+          <div
+            key={step.key}
+            onClick={() => onStepClick?.(step.key)}
+            className={cn(
+              "flex items-center flex-1 last:flex-none",
+              onStepClick && "cursor-pointer select-none group"
+            )}
+          >
             <div className="flex flex-col items-center gap-1.5">
               <span
                 className={cn(
-                  "flex size-7 items-center justify-center rounded-full border-2 text-xs font-bold",
+                  "flex size-7 items-center justify-center rounded-full border-2 text-xs font-bold transition-transform group-hover:scale-110",
                   done && "bg-success border-success text-success-foreground",
-                  active && "bg-primary border-primary text-primary-foreground",
-                  !done && !active && "bg-card border-border text-muted-foreground",
+                  active && "bg-primary border-primary text-primary-foreground shadow-xs",
+                  !done && !active && "bg-card border-border text-muted-foreground group-hover:border-primary/50",
                 )}
               >
                 {done ? <Check size={14} /> : i + 1}
               </span>
               <span
                 className={cn(
-                  "text-[11px] font-medium whitespace-nowrap",
-                  active ? "text-foreground" : "text-muted-foreground",
+                  "text-[11px] font-medium whitespace-nowrap transition-colors",
+                  active ? "text-foreground font-bold" : "text-muted-foreground group-hover:text-foreground",
                 )}
               >
                 {step.label}
@@ -185,7 +198,7 @@ export function StatusStepper({
             {i < FLOW.length - 1 && (
               <span
                 className={cn(
-                  "h-0.5 flex-1 mx-1.5 -mt-5 rounded-full",
+                  "h-0.5 flex-1 mx-1.5 -mt-5 rounded-full transition-colors",
                   i < current ? "bg-success" : "bg-border",
                 )}
               />

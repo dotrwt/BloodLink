@@ -307,11 +307,37 @@ export const mockDb = {
   },
 
   async updateRequestStatus(id: string, status: RequestStatus): Promise<BloodRequest | null> {
-    await delay();
+    await delay(50);
     const idx = requestsDb.findIndex((r) => r.id === id);
-    if (idx === -1) return null;
-    requestsDb[idx] = { ...requestsDb[idx], status };
-    return { ...requestsDb[idx] };
+    if (idx !== -1) {
+      requestsDb[idx] = { ...requestsDb[idx], status };
+      return { ...requestsDb[idx] };
+    }
+    const newReq: BloodRequest = {
+      id,
+      patientName: "Patient",
+      bloodGroup: "O-",
+      units: 2,
+      unitsSecured: 1,
+      hospital: "Manipal Hospital, Old Airport Rd",
+      location: "Bengaluru",
+      urgency: "urgent",
+      requiredBy: "Urgent",
+      createdAt: "Recently",
+      status,
+      source: { name: "Sanjeevani Blood Centre", kind: "bank" },
+    };
+    requestsDb.push(newReq);
+    return newReq;
+  },
+
+  upsertRequest(req: BloodRequest) {
+    const idx = requestsDb.findIndex((r) => r.id === req.id);
+    if (idx !== -1) {
+      requestsDb[idx] = { ...requestsDb[idx], ...req };
+    } else {
+      requestsDb.push(req);
+    }
   },
 
   // Candidates

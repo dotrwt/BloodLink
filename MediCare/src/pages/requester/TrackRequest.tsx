@@ -86,11 +86,13 @@ export default function TrackRequest() {
 
   function advance() {
     const i = SEQ.indexOf(status);
-    if (i < SEQ.length - 1) updateStatus(SEQ[i + 1]);
+    if (i < SEQ.length - 1) {
+      updateStatus(SEQ[i + 1]);
+    }
   }
 
   function reset() {
-    updateStatus("contacted");
+    updateStatus("matching");
   }
 
   return (
@@ -148,7 +150,7 @@ export default function TrackRequest() {
         <CardBody className="p-5 sm:p-6">
           {/* Stepper */}
           <div className="overflow-x-auto py-2">
-            <StatusStepper status={status} />
+            <StatusStepper status={status} onStepClick={updateStatus} />
           </div>
 
           {/* Live Donor GPS Location Map when request is accepted or in transit */}
