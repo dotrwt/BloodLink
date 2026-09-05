@@ -22,8 +22,8 @@ export default function Login() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      navigate("/select-role");
-    }, 900);
+      navigate("/app/dashboard");
+    }, 600);
   }
 
   return (
@@ -97,9 +97,9 @@ export default function Login() {
           </form>
 
           <p className="mt-6 text-sm text-muted-foreground text-center">
-            New to BloodLink?{" "}
-            <Link to="/select-role" className="text-primary font-medium hover:underline">
-              Create an account
+            Explore BloodLink?{" "}
+            <Link to="/app/dashboard" className="text-primary font-medium hover:underline">
+              Enter dashboard
             </Link>
           </p>
         </div>

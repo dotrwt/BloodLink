@@ -32,7 +32,7 @@ function PublicNav() {
           <Link to="/login">
             <Button variant="ghost" size="sm">Log in</Button>
           </Link>
-          <Link to="/select-role">
+          <Link to="/app/dashboard">
             <Button size="sm">Get started</Button>
           </Link>
         </div>
@@ -70,7 +70,7 @@ export default function Landing() {
               eligibility, tracked in real time until the unit is confirmed.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <Link to="/select-role">
+              <Link to="/app/dashboard">
                 <Button size="lg" rightIcon={<ArrowRight size={18} />} fullWidth>
                   Get started — it's free
                 </Button>
@@ -242,7 +242,7 @@ export default function Landing() {
           <p className="mt-3 text-primary-foreground/85 max-w-xl mx-auto">
             Join thousands keeping emergency blood within reach. Sign up in under two minutes.
           </p>
-          <Link to="/select-role" className="inline-block mt-7">
+          <Link to="/app/dashboard" className="inline-block mt-7">
             <Button size="lg" variant="secondary" rightIcon={<ArrowRight size={18} />}>
               Get started
             </Button>

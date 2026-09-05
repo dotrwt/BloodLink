@@ -4,52 +4,26 @@ import { Link, useRouter } from "../../lib/router";
 import type { Role } from "../../lib/types";
 import {
   Bell,
-  Building,
-  Calendar,
   DropletFill,
   Home,
   List,
   LogOut,
-  Package,
   Plus,
-  Settings,
   User,
 } from "../../lib/icons";
 import { NOTIFICATIONS } from "../../lib/mock";
 
 type NavItem = { label: string; to: string; icon: typeof Home };
 
-const NAV: Record<Role, NavItem[]> = {
-  requester: [
-    { label: "Dashboard", to: "/app/requester", icon: Home },
-    { label: "New request", to: "/app/requester/new", icon: Plus },
-    { label: "History", to: "/app/requester/history", icon: List },
-    { label: "Alerts", to: "/app/notifications", icon: Bell },
-    { label: "Profile", to: "/app/profile", icon: User },
-  ],
-  donor: [
-    { label: "Dashboard", to: "/app/donor", icon: Home },
-    { label: "Emergencies", to: "/app/donor", icon: DropletFill },
-    { label: "Schedule", to: "/app/donor", icon: Calendar },
-    { label: "Alerts", to: "/app/notifications", icon: Bell },
-    { label: "Profile", to: "/app/profile", icon: User },
-  ],
-  bank: [
-    { label: "Dashboard", to: "/app/bank", icon: Home },
-    { label: "Inventory", to: "/app/bank", icon: Package },
-    { label: "Requests", to: "/app/bank", icon: List },
-    { label: "Alerts", to: "/app/notifications", icon: Bell },
-    { label: "Profile", to: "/app/profile", icon: User },
-  ],
-};
+const NAV: NavItem[] = [
+  { label: "Dashboard", to: "/app/dashboard", icon: Home },
+  { label: "New request", to: "/app/requester/new", icon: Plus },
+  { label: "History", to: "/app/requester/history", icon: List },
+  { label: "Alerts", to: "/app/notifications", icon: Bell },
+  { label: "Profile", to: "/app/profile", icon: User },
+];
 
-const ROLE_LABEL: Record<Role, string> = {
-  requester: "Requester",
-  donor: "Donor",
-  bank: "Blood Bank",
-};
-
-function Logo({ className }: { className?: string }) {
+export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2 font-display font-bold", className)}>
       <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -61,43 +35,41 @@ function Logo({ className }: { className?: string }) {
 }
 
 export function AppShell({
-  role,
   children,
   title,
   active,
 }: {
-  role: Role;
+  role?: Role;
   children: ReactNode;
   title?: string;
   active?: string;
 }) {
   const { path } = useRouter();
-  const items = NAV[role];
-  const unread = NOTIFICATIONS.filter((n) => n.unread && (n.role === role || n.role === "all")).length;
+  const unread = NOTIFICATIONS.filter((n) => n.unread).length;
 
   const isActive = (to: string) =>
-    active ? to === active : path === to || (to !== `/app/${role}` && path.startsWith(to));
+    active ? to === active : path === to || (to !== "/app/dashboard" && path.startsWith(to));
 
   return (
     <div className="min-h-full lg:grid lg:grid-cols-[16rem_1fr]">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col border-r border-border bg-card sticky top-0 h-screen">
         <div className="px-5 h-16 flex items-center border-b border-border">
-          <Link to="/select-role"><Logo /></Link>
+          <Link to="/app/dashboard"><Logo /></Link>
         </div>
         <div className="px-3 py-3">
           <div className="rounded-xl bg-primary-soft/60 px-3 py-2.5 flex items-center gap-2.5">
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              {role === "bank" ? <Building size={16} /> : role === "donor" ? <DropletFill size={16} /> : <User size={16} />}
+              <DropletFill size={16} />
             </span>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground leading-none">Signed in as</p>
-              <p className="text-sm font-semibold truncate">{ROLE_LABEL[role]}</p>
+              <p className="text-sm font-semibold truncate">Alex Morgan</p>
             </div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-          {items.map((it, i) => (
+          {NAV.map((it, i) => (
             <Link
               key={i}
               to={it.to}
@@ -132,7 +104,7 @@ export function AppShell({
       <div id="bl-scroll" className="min-w-0 lg:h-screen lg:overflow-y-auto pb-20 lg:pb-0">
         {/* Top bar */}
         <header className="sticky top-0 z-20 h-16 border-b border-border bg-background/85 backdrop-blur flex items-center gap-3 px-4 sm:px-6">
-          <Link to="/select-role" className="lg:hidden"><Logo className="text-sm" /></Link>
+          <Link to="/app/dashboard" className="lg:hidden"><Logo className="text-sm" /></Link>
           {title && (
             <h1 className="hidden lg:block text-lg font-semibold">{title}</h1>
           )}
@@ -140,47 +112,52 @@ export function AppShell({
             <Link
               to="/app/notifications"
               className="relative flex size-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Notifications"
             >
-              <Bell size={20} />
+              <Bell size={18} />
               {unread > 0 && (
                 <span className="absolute top-2 right-2 size-2 rounded-full bg-critical ring-2 ring-background" />
               )}
             </Link>
             <Link
               to="/app/profile"
-              className="flex size-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-muted text-sm font-medium"
             >
-              <Settings size={20} />
+              <span className="flex size-7 items-center justify-center rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold">
+                AM
+              </span>
+              <span className="hidden sm:inline">Alex</span>
             </Link>
           </div>
         </header>
 
-        <main className="px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">{children}</main>
+        {/* Content */}
+        <main className="p-4 sm:p-6 max-w-6xl mx-auto w-full">
+          {children}
+        </main>
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur">
-        <div className="grid grid-cols-5 h-16">
-          {items.map((it, i) => (
-            <Link
-              key={i}
-              to={it.to}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 text-[11px] font-medium relative",
-                isActive(it.to) ? "text-primary" : "text-muted-foreground",
-              )}
-            >
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 h-16 border-t border-border bg-card/95 backdrop-blur grid grid-cols-5 items-center px-2">
+        {NAV.map((it, i) => (
+          <Link
+            key={i}
+            to={it.to}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 py-1 text-xs font-medium transition-colors relative",
+              isActive(it.to) ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <span className="relative">
               <it.icon size={20} />
-              {it.label}
               {it.label === "Alerts" && unread > 0 && (
-                <span className="absolute top-2 right-[calc(50%-1.25rem)] size-2 rounded-full bg-critical" />
+                <span className="absolute -top-1 -right-1 size-2 rounded-full bg-critical" />
               )}
-            </Link>
-          ))}
-        </div>
+            </span>
+            <span className="truncate max-w-[60px]">{it.label}</span>
+          </Link>
+        ))}
       </nav>
     </div>
   );
 }
-
-export { Logo };
