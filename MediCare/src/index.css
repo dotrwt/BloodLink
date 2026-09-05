@@ -169,3 +169,25 @@ h5 {
   min-width: 44px;
 }
 
+/* Subtle modern medical tech dot grid */
+.bl-dot-grid {
+  background-image: radial-gradient(rgba(13, 107, 99, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Modern glassmorphic card */
+.bl-glass-card {
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Interactive lift for cards */
+.bl-card-lift {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bl-card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -12px rgba(13, 107, 99, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
+}
+
