@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AppShell } from "../../components/layout/AppShell";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Field, Input, Select, Textarea } from "../../components/ui/Field";
@@ -10,6 +10,7 @@ import { cn } from "../../lib/cn";
 import { Link, useRouter } from "../../lib/router";
 import { useOptions } from "../../hooks/useOptions";
 import { useRequests } from "../../hooks/useRequests";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 import type { BloodGroup, Urgency } from "../../types/models";
 import {
   ArrowLeft,
@@ -30,17 +31,34 @@ export default function CreateRequest() {
   const { navigate } = useRouter();
   const { bloodGroups, urgencyLevels, hospitals, loading: optionsLoading } = useOptions();
   const { createRequest } = useRequests();
+  const { user } = useCurrentUser();
 
   const [group, setGroup] = useState<BloodGroup | "">("A+");
   const [units, setUnits] = useState("2");
   const [patient, setPatient] = useState("");
   const [hospital, setHospital] = useState(hospitals[0]?.name || "Manipal Hospital, Old Airport Rd");
   const [location, setLocation] = useState(hospitals[0]?.address || "HAL, Bengaluru");
+  const [city, setCity] = useState("Gwalior");
+  const [area, setArea] = useState("Indiranagar");
   const [urgency, setUrgency] = useState<Urgency>("critical");
   const [requiredBy, setRequiredBy] = useState("Today, within 2 hours");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState(false);
+
+  useEffect(() => {
+    if (user?.city) setCity(user.city);
+    if (user?.area) setArea(user.area);
+    if (user?.city && hospitals.length > 0) {
+      const matchHosp = hospitals.find(
+        (h) => h.city?.toLowerCase() === user.city?.toLowerCase()
+      );
+      if (matchHosp) {
+        setHospital(matchHosp.name);
+        setLocation(matchHosp.address);
+      }
+    }
+  }, [user, hospitals]);
 
   const errors = {
     group: !group ? "Select the required blood group" : "",
@@ -62,7 +80,9 @@ export default function CreateRequest() {
         bloodGroup: group,
         units: Number(units),
         hospital,
-        location: location || "Central Hospital Ward",
+        location: location || `${area}, ${city}`,
+        city,
+        area,
         urgency,
         requiredBy,
         note,
@@ -244,6 +264,24 @@ export default function CreateRequest() {
                       placeholder="e.g. ICU Wing A, Floor 2"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
+                    />
+                  </Field>
+                </div>
+
+                {/* City & Locality Input */}
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="City / District" required hint="Used for nearby donor matching and map dispatch">
+                    <Input
+                      placeholder="e.g. Gwalior, Bengaluru, Delhi"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Area / Locality" required hint="e.g. Indiranagar, City Centre, Lashkar">
+                    <Input
+                      placeholder="e.g. Indiranagar, City Centre"
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
                     />
                   </Field>
                 </div>

@@ -222,11 +222,14 @@ let notificationsDb: AppNotification[] = [
 ];
 
 const hospitalsDb: Hospital[] = [
-  { id: "h1", name: "Manipal Hospital, Old Airport Rd", city: "Bengaluru", address: "98 HAL Old Airport Rd" },
-  { id: "h2", name: "Narayana Health City", city: "Bengaluru", address: "Bommasandra Industrial Area" },
-  { id: "h3", name: "Fortis Hospital, Bannerghatta", city: "Bengaluru", address: "Bannerghatta Main Rd" },
-  { id: "h4", name: "Columbia Asia Referral Hospital", city: "Bengaluru", address: "Yeshwanthpur" },
-  { id: "h5", name: "St. John's Medical College Hospital", city: "Bengaluru", address: "Sarjapur Rd" },
+  { id: "h1", name: "Manipal Hospital, Old Airport Rd", city: "Bengaluru", address: "98 HAL Old Airport Rd, Bengaluru" },
+  { id: "h2", name: "Apollo Demo Hospital", city: "Gwalior", address: "City Centre, Gwalior" },
+  { id: "h3", name: "Jaya Arogya (JAH) Hospital", city: "Gwalior", address: "Lashkar, Gwalior" },
+  { id: "h4", name: "Narayana Health City", city: "Bengaluru", address: "Bommasandra Industrial Area, Bengaluru" },
+  { id: "h5", name: "Fortis Hospital, Bannerghatta", city: "Bengaluru", address: "Bannerghatta Main Rd, Bengaluru" },
+  { id: "h6", name: "Red Cross Blood Bank", city: "Delhi", address: "1 Red Cross Rd, New Delhi" },
+  { id: "h7", name: "AIIMS New Delhi", city: "Delhi", address: "Ansari Nagar, New Delhi" },
+  { id: "h8", name: "KEM Hospital", city: "Mumbai", address: "Parel, Mumbai" },
 ];
 
 const donorDonationsDb: DonorDonationRecord[] = [
@@ -296,6 +299,10 @@ export const mockDb = {
       unitsSecured: 0,
       hospital: payload.hospital,
       location: payload.location,
+      city: payload.city,
+      area: payload.area,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
       urgency: payload.urgency,
       requiredBy: payload.requiredBy,
       createdAt: "Just now",
@@ -307,20 +314,77 @@ export const mockDb = {
   },
 
   async updateRequestStatus(id: string, status: RequestStatus): Promise<BloodRequest | null> {
-    await delay();
+    await delay(50);
     const idx = requestsDb.findIndex((r) => r.id === id);
-    if (idx === -1) return null;
-    requestsDb[idx] = { ...requestsDb[idx], status };
-    return { ...requestsDb[idx] };
+    if (idx !== -1) {
+      requestsDb[idx] = { ...requestsDb[idx], status };
+      return { ...requestsDb[idx] };
+    }
+    const newReq: BloodRequest = {
+      id,
+      patientName: "Patient",
+      bloodGroup: "O-",
+      units: 2,
+      unitsSecured: 1,
+      hospital: "Manipal Hospital, Old Airport Rd",
+      location: "Bengaluru",
+      urgency: "urgent",
+      requiredBy: "Urgent",
+      createdAt: "Recently",
+      status,
+      source: { name: "Sanjeevani Blood Centre", kind: "bank" },
+    };
+    requestsDb.push(newReq);
+    return newReq;
+  },
+
+  upsertRequest(req: BloodRequest) {
+    const idx = requestsDb.findIndex((r) => r.id === req.id);
+    if (idx !== -1) {
+      requestsDb[idx] = { ...requestsDb[idx], ...req };
+    } else {
+      requestsDb.push(req);
+    }
+  },
+
+  addCandidate(cand: MatchCandidate) {
+    const idx = candidatesDb.findIndex(
+      (c) => c.id === cand.id || c.name.toLowerCase() === cand.name.toLowerCase()
+    );
+    if (idx !== -1) {
+      candidatesDb[idx] = { ...candidatesDb[idx], ...cand };
+    } else {
+      candidatesDb.unshift(cand);
+    }
   },
 
   // Candidates
-  async getCandidates(requestId?: string): Promise<MatchCandidate[]> {
+  async getCandidates(_requestId?: string): Promise<MatchCandidate[]> {
     await delay();
-    if (requestId) {
-      return [...candidatesDb];
+    const list = [...candidatesDb];
+    // If the active authenticated user is a donor, ensure they are dynamically in the candidate list
+    if (currentUser && currentUser.role === "donor") {
+      const exists = list.some(
+        (c) => c.name.toLowerCase() === currentUser.name.toLowerCase()
+      );
+      if (!exists) {
+        list.unshift({
+          id: `cand-${currentUser.id || "current-donor"}`,
+          kind: "donor",
+          name: currentUser.name,
+          bloodGroup: currentUser.bloodGroup,
+          distanceKm: 1.5,
+          etaMin: 12,
+          eligible: currentUser.availableToDonate ?? true,
+          unitsAvailable: 1,
+          rating: 5.0,
+          lastDonation: currentUser.lastDonationDate || "First-time Donor",
+          verified: true,
+          responseRate: 1.0,
+        });
+      }
     }
-    return [...candidatesDb];
+    return list;
   },
 
   // Nearby Emergencies

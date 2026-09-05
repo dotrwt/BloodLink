@@ -5,6 +5,7 @@ import RoleSelect from "./pages/RoleSelect";
 import DonorDashboard from "./pages/donor/DonorDashboard";
 import RequesterDashboard from "./pages/requester/RequesterDashboard";
 import BankDashboard from "./pages/bank/BankDashboard";
+import { HospitalRouteGuard } from "./components/auth/HospitalRouteGuard";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import CreateRequest from "./pages/requester/CreateRequest";
@@ -25,7 +26,14 @@ export default function App() {
   // 3 Distinct Role Dashboards
   if (p === "/app/donor") return <DonorDashboard />;
   if (p === "/app/requester" || p === "/app/dashboard") return <RequesterDashboard />;
-  if (p === "/app/bank") return <BankDashboard />;
+  if (p === "/app/bank") {
+    return (
+      <HospitalRouteGuard>
+        <BankDashboard />
+      </HospitalRouteGuard>
+    );
+  }
+
 
   // Request flow
   if (p === "/app/requester/new") return <CreateRequest />;
