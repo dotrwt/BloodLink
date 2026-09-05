@@ -6,6 +6,7 @@ import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { StatusStepper, BloodGroupChip } from "../../components/ui/domain";
 import { Link, matchPath, useRouter } from "../../lib/router";
 import { useRequestDetail } from "../../hooks/useRequestDetail";
+import { LiveDonorMap } from "../../components/domain/LiveDonorMap";
 import type { RequestStatus } from "../../types/models";
 import {
   ArrowLeft,
@@ -150,6 +151,36 @@ export default function TrackRequest() {
             <StatusStepper status={status} />
           </div>
 
+          {/* Live Donor GPS Location Map when request is accepted or in transit */}
+          {(status === "accepted" ||
+            status === "en_route" ||
+            status === "confirmed" ||
+            !isBank) && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <span className="relative flex size-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-critical opacity-75"></span>
+                    <span className="relative inline-flex rounded-full size-2.5 bg-critical"></span>
+                  </span>
+                  Live Donor Location &amp; Delivery Route
+                </h3>
+                <span className="text-xs text-primary font-medium">Updated live</span>
+              </div>
+              <LiveDonorMap
+                donorName={source.name}
+                donorBloodGroup={request.bloodGroup}
+                donorPhone="+91 98765 43210"
+                hospitalName={request.hospital}
+                hospitalAddress={
+                  request.location ||
+                  `${request.area || "Indiranagar"}, ${request.city || "Bengaluru"}`
+                }
+                status={status}
+              />
+            </div>
+          )}
+
           {/* Active Source Card */}
           <div className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
             <div className="flex items-center gap-3.5">
@@ -188,6 +219,7 @@ export default function TrackRequest() {
           <div className="mt-6 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-foreground">Simulate dispatch:</span>
+
               <Button size="sm" variant="outline" onClick={advance} disabled={status === "fulfilled"}>
                 Next step →
               </Button>
