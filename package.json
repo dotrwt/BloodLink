@@ -1,0 +1,10 @@
+{
+  "name": "bloodlink-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BloodLink - Emergency Blood Response Network",
+  "scripts": {
+    "dev": "npm --prefix MediCare run dev",
+    "build": "npm --prefix MediCare run build"
+  }
+}
